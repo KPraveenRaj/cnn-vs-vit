@@ -1,0 +1,10 @@
+# CONFIRMATION dataset ONLY — smallest committed slice, first cut under time
+# pressure. Not yet extracted: data/raw/food101/archive_food.zip is a wrapper
+# zip containing food-101.zip (5.0 GB). Extract right before the runs.
+dataset: food101
+root: data/raw/food101/food-101
+num_classes: 101
+splits_dir: data/splits/food101
+split_ratios: {train: 0.70, val: 0.10, test: 0.20}
+fractions: [25, 100]
+seeds: [0]

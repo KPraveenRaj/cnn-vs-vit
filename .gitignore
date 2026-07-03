@@ -1,0 +1,18 @@
+# Local notes & drafts — not part of the public artifact
+/report/
+
+# Learning/scratch notebooks stay local (project deliverable notebooks are tracked)
+notebooks/phase0*
+notebooks/scratch/
+
+# Data & heavy artifacts — never committed
+data/raw/*
+!data/raw/.gitkeep
+results/checkpoints/*
+!results/checkpoints/.gitkeep
+results/features/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

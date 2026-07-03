@@ -1,0 +1,15 @@
+# Core stack: PyTorch + timm, all open-source.
+# DRAFT list — exact versions will be frozen (pip freeze) after the first
+# full training run of the experiment matrix.
+torch
+torchvision
+timm
+numpy
+pandas
+pyarrow
+scikit-learn
+matplotlib
+pyyaml
+pillow
+jupyter
+ipykernel

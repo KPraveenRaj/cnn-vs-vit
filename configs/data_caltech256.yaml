@@ -1,0 +1,10 @@
+# PRIMARY dataset. 257 categories on disk, 30,608 files (verified 2026-07-04);
+# clutter excluded below -> 256 usable classes.
+dataset: caltech256
+root: data/raw/caltech256/256_ObjectCategories
+exclude_classes: ["257.clutter"]    # documented exclusion
+num_classes: 256
+splits_dir: data/splits/caltech256
+split_ratios: {train: 0.70, val: 0.10, test: 0.20}  # stratified per class; TEST FROZEN FOREVER
+fractions: [10, 25, 50, 100]  # per-class and NESTED: f10 ⊂ f25 ⊂ f50 ⊂ f100
+seeds: [0, 1, 2]              # 3 independent nestings

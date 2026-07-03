@@ -1,0 +1,9 @@
+# CNN archetype
+model_name: resnet50
+timm_name: resnet50.a1_in1k
+# ^ ImageNet-1k supervised weights (timm default tag for resnet50). Declared
+#   choice: pre-training source must match the ViT's — ImageNet-1k ONLY.
+
+lr: null                # SET BY the declared 3-point LR sweep. Do not guess.
+micro_batch_size: 64    # fits 8 GB at 224 with AMP
+grad_accum_steps: 1     # micro_batch x accum must equal effective_batch_size (base.yaml)

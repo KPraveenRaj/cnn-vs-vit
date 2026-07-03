@@ -1,0 +1,36 @@
+# Shared training protocol — IDENTICAL for both models.
+# "Controlled data and protocol, with declared per-model tuning": the only
+# per-model differences allowed are (a) the learning rate from the declared
+# 3-point sweep, (b) timm normalization constants, (c) the micro-batch /
+# grad-accumulation split, which is memory bookkeeping only — the effective
+# batch size is fixed here.
+#
+# Values marked DRAFT are provisional until the Phase-1 LR sweep / first
+# baselines. Change them there once, before the matrix — never mid-matrix.
+
+resolution: 224
+num_workers: 8
+
+# --- Optimization (DRAFT until Phase-1 baselines) ---
+optimizer: adamw            # one optimizer family for both models
+weight_decay: 0.05          # DRAFT
+epochs: 30                  # hard cap; early stopping usually ends runs sooner
+schedule: cosine
+warmup_epochs: 3            # linear warmup, then cosine decay (auto-shortened for short runs)
+early_stop_patience: 5      # on val top-1
+effective_batch_size: 64    # fixed for both models: micro_batch x grad_accum
+
+# --- Memory (mandatory on 8 GB VRAM) ---
+amp: true
+
+# --- Augmentation: ONE modest pipeline for both models. ---
+# Heavy aug (mixup/cutmix/randaug) is OUT of scope — it is a confound.
+train_aug:
+  random_resized_crop: 224
+  horizontal_flip: true
+  color_jitter: light       # exact params defined once in src/data/transforms.py
+eval_tfms: resize_256_center_crop_224
+normalization: per_model_timm   # declared controlled difference
+
+# --- Reproducibility ---
+deterministic: true         # src/utils/seed.py: python/numpy/torch/cuda + cudnn flags
