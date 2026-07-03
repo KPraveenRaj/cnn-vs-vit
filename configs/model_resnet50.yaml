@@ -4,6 +4,11 @@ timm_name: resnet50.a1_in1k
 # ^ ImageNet-1k supervised weights (timm default tag for resnet50). Declared
 #   choice: pre-training source must match the ViT's — ImageNet-1k ONLY.
 
-lr: null                # SET BY the declared 3-point LR sweep. Do not guess.
-micro_batch_size: 64    # fits 8 GB at 224 with AMP
+lr: 3.0e-4
+# ^ Set by the declared 3-point LR sweep (2026-07-04; f100, seed 0, 8 epochs,
+#   AdamW, effective batch 64) — winner is the interior grid point:
+#     1e-4 -> 0.8708   3e-4 -> 0.8943 (best)   1e-3 -> 0.8903   (val top-1)
+#   Full records: results/runs/resnet50_caltech256_f100_s0_fullft-sweep-lr*/
+
+micro_batch_size: 64    # fits 8 GB at 224 with AMP (measured peak: 3.1 GB)
 grad_accum_steps: 1     # micro_batch x accum must equal effective_batch_size (base.yaml)
