@@ -1,7 +1,8 @@
 # Local notes & drafts — not part of the public artifact
 /report/
 
-# Learning/scratch notebooks stay local (project deliverable notebooks are tracked)
+# Learning workspace & scratch notebooks stay local (project deliverable notebooks are tracked)
+/learning/
 notebooks/phase0*
 notebooks/scratch/
 
