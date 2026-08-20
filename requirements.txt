@@ -8,8 +8,11 @@ numpy
 pandas
 pyarrow
 scikit-learn
+scipy          # explicit: gaussian_filter in src/eval/corruptions.py (already required by scikit-learn)
 matplotlib
 pyyaml
 pillow
 jupyter
 ipykernel
+python-pptx    # report/deck generation
+python-docx    # report generation

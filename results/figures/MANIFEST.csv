@@ -1,0 +1,4 @@
+file,title,caption,generated_from
+fig_data_efficiency.png,Data-efficiency curves,"Frozen-test top-1 against the nested per-class training fraction. Line is the mean over 3 seeds, band is +/-1 SD. Solid = full fine-tuning, dashed = linear probe on frozen features.",results/tables/master.csv
+fig_calibration.png,Calibration,"Left: reliability diagram at f100 -- points below the diagonal are over-confident. Right: expected calibration error against training fraction, mean over seeds.",results/tables/calibration.csv
+fig_deployment.png,Deployment cost,"Static cost (parameters, GMACs at 224) and cost measured on the real workload (peak training VRAM, training throughput on an RTX 4060 8 GB).",results/tables/deployment.csv

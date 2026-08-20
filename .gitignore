@@ -17,3 +17,10 @@ results/features/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# Run logs: per-epoch console spam. The structured record lives in
+# results/runs/<run_id>/train_log.csv, which IS committed.
+/logs/
+
+# Cached backbone features for linear probes (regenerable, hundreds of MB)
+results/features/

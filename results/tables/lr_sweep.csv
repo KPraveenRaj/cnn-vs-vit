@@ -1,0 +1,4 @@
+model_name,dataset,fraction,seed,lr,epochs_ran,best_val_top1,best_val_top5,total_wall_min,run_id,selected
+resnet50,caltech256,100,0,0.0001,8,0.8707505890272635,0.96668,10.0,resnet50_caltech256_f100_s0_fullft-sweep-lr1e-4,False
+resnet50,caltech256,100,0,0.0003,8,0.8943116795691687,0.97004,10.2,resnet50_caltech256_f100_s0_fullft-sweep-lr3e-4,True
+resnet50,caltech256,100,0,0.001,8,0.8902726354762707,0.96769,10.0,resnet50_caltech256_f100_s0_fullft-sweep-lr1e-3,False

@@ -8,8 +8,12 @@ timm_name: vit_base_patch16_224.augreg_in1k
 #   on ImageNet-1k only. Verified available in timm 1.0.27 (2026-07-04).
 
 lr: null                # SET BY the declared 3-point LR sweep. Do not guess.
-micro_batch_size: 16    # AMP + grad accumulation mandatory on 8 GB VRAM
-grad_accum_steps: 4     # 16 x 4 = 64 = effective_batch_size (base.yaml)
+micro_batch_size: 32    # AMP + grad accumulation mandatory on 8 GB VRAM
+grad_accum_steps: 2     # 32 x 2 = 64 = effective_batch_size (base.yaml)
+# ^ Measured on the RTX 4060 8 GB (2026-08-21): 32x2 peaks at 3.3 GB and ~90 img/s,
+#   vs 16x4 at 2.3 GB and ~67 img/s. Chose 32x2 for the 34% throughput gain with
+#   ample headroom. This split is memory bookkeeping ONLY — the effective batch
+#   stays 64, so the optimization protocol is identical to ResNet-50's.
 
 # Declared fallback if ViT-B/16 proves infeasible on 8 GB / small data:
 # deit_small_patch16_224.fb_in1k — ImageNet-1k only by construction.
