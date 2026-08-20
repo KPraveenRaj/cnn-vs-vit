@@ -1,0 +1,2 @@
+epoch,train_loss,train_top1,val_loss,val_top1,val_top5,lr,epoch_time_s,imgs_per_sec,peak_vram_mb
+0,5.11398,0.0979,3.95073,0.33659,0.52541,1.504601226993865e-05,254.0,82.1,3621.4

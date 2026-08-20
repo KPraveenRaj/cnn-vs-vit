@@ -1,5 +1,13 @@
-# Local notes & drafts — not part of the public artifact
-/report/
+# Local notes & drafts — not part of the public artifact.
+# The document GENERATORS are code and stay public (they are the proof that no
+# number in a deck or report is typed by hand); only their .pptx/.docx output,
+# weekly notes and drafts stay local. Note the four-line dance: git cannot
+# re-include a file whose parent directory is excluded, so the directory has to
+# be un-excluded before its contents can be filtered.
+/report/*
+!/report/build/
+/report/build/*
+!/report/build/*.py
 
 # Learning workspace & scratch notebooks stay local (project deliverable notebooks are tracked)
 /learning/
