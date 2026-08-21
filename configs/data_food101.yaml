@@ -1,8 +1,16 @@
 # CONFIRMATION dataset ONLY — smallest committed slice, first cut under time
-# pressure. Not yet extracted: data/raw/food101/archive_food.zip is a wrapper
-# zip containing food-101.zip (5.0 GB). Extract right before the runs.
+# pressure. Extract with scripts/extract_food101.sh (archive_food.zip is a
+# wrapper containing food-101.zip, 5.0 GB).
 dataset: food101
-root: data/raw/food101/food-101
+root: data/raw/food101/food-101/images
+# ^ images/, not the dataset root: make_splits.py treats each SUBDIRECTORY of
+#   root as a class, and the root also holds meta/ and README files.
+#
+# Declared deviation: Food-101 ships an official train/test split in meta/, but
+# this project applies its own 70/10/20 stratified split, identical in
+# construction to Caltech-256's. The study compares two models to each other
+# under one protocol, not to published Food-101 leaderboard numbers, so protocol
+# consistency across datasets matters more than split provenance here.
 num_classes: 101
 splits_dir: data/splits/food101
 split_ratios: {train: 0.70, val: 0.10, test: 0.20}
