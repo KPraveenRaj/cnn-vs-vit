@@ -88,7 +88,7 @@ def fig_data_efficiency(master, out_dir):
     d = master.dropna(subset=["test_top1"])
     if d.empty:
         return
-    fig, ax = plt.subplots(figsize=(7.2, 4.8))
+    fig, ax = plt.subplots(figsize=(9.0, 4.6))
     for regime in ("fullft", "linprobe"):
         for model in sorted(d["model_name"].unique()):
             g = d[(d["model_name"] == model) & (d["regime"] == regime)]
@@ -166,7 +166,7 @@ def fig_band_noise(long, out_dir):
     d = long[long["curve"] == "frequency:band_noise"] if not long.empty else pd.DataFrame()
     if d.empty:
         return
-    fig, ax = plt.subplots(figsize=(7.2, 4.5))
+    fig, ax = plt.subplots(figsize=(9.0, 4.4))
     g0 = d[(d["regime"] == "fullft") & (d["fraction"] == 100)]
     for model in sorted(g0["model_name"].unique()):
         _band(ax, g0[g0["model_name"] == model], "x_norm", "top1",
