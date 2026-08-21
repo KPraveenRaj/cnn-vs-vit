@@ -96,8 +96,13 @@ def main():
     if args.run_ids:
         run_ids = args.run_ids.split(",")
     else:
+        # metrics.json — not best.pt — is this project's completion marker. A run
+        # killed mid-training leaves a best.pt behind (it is written whenever val
+        # improves), so discovering by checkpoint alone would silently score a
+        # half-trained model as if it were a finished matrix cell.
         run_ids = sorted(p.name for p in runs_dir.iterdir()
                          if (ckpt_dir / p.name / "best.pt").exists()
+                         and (p / "metrics.json").exists()
                          and "sweep" not in p.name
                          and (args.regime == "all" or p.name.endswith(f"_{args.regime}")))
     print(f"[battery] {len(run_ids)} checkpoint(s): {', '.join(run_ids)}\n", flush=True)
