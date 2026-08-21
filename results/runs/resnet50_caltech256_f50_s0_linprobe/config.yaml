@@ -1,0 +1,54 @@
+resolution: 224
+num_workers: 8
+optimizer: adamw
+weight_decay: 0.05
+epochs: 15
+schedule: cosine
+warmup_epochs: 3
+early_stop_patience: 8
+effective_batch_size: 64
+amp: true
+train_aug:
+  random_resized_crop: 224
+  horizontal_flip: true
+  color_jitter: light
+eval_tfms: resize_256_center_crop_224
+normalization: per_model_timm
+deterministic: true
+model_name: resnet50
+timm_name: resnet50.a1_in1k
+lr: 0.1
+micro_batch_size: 64
+grad_accum_steps: 1
+probe_lr: 0.1
+dataset: caltech256
+root: data/raw/caltech256/256_ObjectCategories
+exclude_classes:
+- 257.clutter
+num_classes: 256
+splits_dir: data/splits/caltech256
+split_ratios:
+  train: 0.7
+  val: 0.1
+  test: 0.2
+fractions:
+- 10
+- 25
+- 50
+- 100
+seeds:
+- 0
+- 1
+- 2
+fraction: 50
+seed: 0
+regime: linprobe
+run_id: resnet50_caltech256_f50_s0_linprobe
+feature_dim: 2048
+probe_lr_grid:
+- 0.0001
+- 0.001
+- 0.01
+- 0.1
+- 1.0
+feature_cache: results/features/resnet50_caltech256/features.npz

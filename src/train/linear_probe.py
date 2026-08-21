@@ -20,11 +20,16 @@ to both models, so the comparison stays controlled)
 1. No train-time augmentation. Features are cached once; augmenting would mean
    re-extracting every epoch, which defeats the entire point of caching. The
    deterministic eval transform is used for all splits.
-2. ONE learning rate for both architectures, chosen by the same declared
-   3-point sweep discipline used for fine-tuning (--sweep). Fitting a linear
-   head on frozen features is a near-convex problem with no architecture-
-   specific optimization dynamics, so a shared LR here is more controlled, not
-   less -- unlike fine-tuning, where forcing one LR would cripple one family.
+2. A PER-MODEL learning rate, chosen by the same declared sweep discipline
+   used for fine-tuning (--sweep). An earlier version of this file shared one LR
+   across both models, arguing that fitting a linear head on frozen features is
+   near-convex and therefore free of architecture-specific dynamics. The sweep
+   falsified that: ResNet-50's 2048-d pooled features and ViT-B/16's 768-d
+   features are differently scaled and conditioned, and their optima sit a full
+   decade apart. Sharing one LR cost the ResNet probe ~1.3 pp -- the same
+   failure mode the per-model fine-tuning sweep exists to prevent. So probes
+   follow the same rule as fine-tuning: one declared sweep per model, selected
+   on validation only.
 
 Everything else matches train.py: AdamW, cosine schedule with warmup, early
 stopping on val top-1, and the same metrics.json / train_log.csv contract, so
@@ -52,7 +57,7 @@ from src.utils.hw_monitor import peak_vram_mb, reset_peak_vram
 from src.utils.seed import seed_everything
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PROBE_LR_GRID = (1e-4, 1e-3, 1e-2)   # declared 3-point grid, log-spaced x10
+PROBE_LR_GRID = (1e-4, 1e-3, 1e-2, 1e-1, 1.0)  # declared grid, log-spaced x10
 PROBE_LR_DEFAULT = 1e-3
 
 
@@ -244,7 +249,15 @@ def main():
             print(f"  lr={lr:<8g} best val top-1 {v1:.4f} (epoch {ep})", flush=True)
         return
 
-    lr = args.lr if args.lr is not None else PROBE_LR_DEFAULT
+    # CLI > per-model swept value in the model YAML > shared fallback.
+    lr = args.lr if args.lr is not None else cfg.get("probe_lr", PROBE_LR_DEFAULT)
+    # PyYAML only resolves scientific notation to a float when it has BOTH a
+    # decimal point and a signed exponent, so "1e-1" silently loads as a str and
+    # blows up deep inside the optimizer. Fail here, with the value, instead.
+    if not isinstance(lr, (int, float)):
+        raise SystemExit(f"probe_lr must be numeric, got {lr!r} ({type(lr).__name__}). "
+                         f"In YAML write 1.0e-1, not 1e-1.")
+    lr = float(lr)
     fractions = [int(f) for f in args.fractions.split(",")] if args.fractions else sorted(cfg["fractions"])
     seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else cfg["seeds"]
 
