@@ -348,10 +348,48 @@ def _body(doc, f, final):
     table(doc, ["Model", "Low-pass AUC", "High-pass AUC", "Most damaging band"], rows,
           f"Table {tno}: Frequency summary at f100.", widths=[1.3, 1.3, 1.3, 1.6])
     tno += 1
-    h2(doc, "6.4 Frequency reliance × data fraction")
+    h2(doc, "6.4 Frequency reliance x data fraction -- the contribution")
+    figure(doc, f.figure("fig_frequency_shift.png"),
+           f"Figure {fno}: Relative retention under equal-energy band-limited noise at "
+           f"the smallest and largest data fractions, each run normalised by its own "
+           f"clean accuracy. Separation between the two curves means spectral "
+           f"robustness depends on the fine-tuning data budget.")
+    fno += 1
+    ps = f.profile_shift()
+    if ps and "resnet50" in ps and "vit_b16" in ps:
+        r, v = ps["resnet50"], ps["vit_b16"]
+        rows = [["ResNet-50"] + [f"{x:+.3f}" for x in r["shift"]],
+                ["ViT-B/16"] + [f"{x:+.3f}" for x in v["shift"]]]
+        table(doc, ["Model"] + [b.replace("-", "\u2013") for b in r["bands"]], rows,
+              f"Table {tno}: Change in relative retention per frequency band between "
+              f"10% and 100% training data, averaged over {r['n_lo']} seeds. Positive "
+              f"means the model became more robust in that band as data grew.",
+              widths=[1.1] + [0.75] * len(r["bands"]))
+        tno += 1
+        ratio = r["max_abs"] / v["max_abs"] if v["max_abs"] else float("nan")
+        para(doc, f"The two families behave qualitatively differently. ResNet-50's "
+                  f"profile moves substantially, and the movement is concentrated at "
+                  f"high frequency: {r['shift'][-1]:+.3f} in the {r['max_band']} bin "
+                  f"band against {r['shift'][0]:+.3f} at the lowest band. ViT-B/16's "
+                  f"profile barely moves at all, its largest change being "
+                  f"{v['max_abs']:.3f}. The ratio of the largest shifts is roughly "
+                  f"{ratio:.0f} to 1.")
+        para(doc, "The natural reading is that the convolutional network must acquire "
+                  "high-frequency robustness from the fine-tuning data, whereas the "
+                  "transformer inherits a spectrally flat robustness profile from "
+                  "pre-training and does not depend on the downstream budget to obtain "
+                  "it. That is a mechanism for the data-efficiency result rather than a "
+                  "restatement of it: the transformer's advantage is largest exactly "
+                  "where the CNN has least data from which to learn what the "
+                  "transformer already has.")
+        para(doc, "Prior work (Park & Kim, 2022) establishes that the two families "
+                  "differ in frequency response at full scale. The finding here is that "
+                  "this difference is itself data-dependent for one family and not the "
+                  "other, which is only visible under a protocol that varies the data "
+                  "budget while holding everything else fixed.")
     figure(doc, f.figure("fig_frequency_interaction.png"),
-           f"Figure {fno}: Low-pass accuracy-vs-cutoff curves, one panel per training "
-           f"fraction. This interaction is the contribution of the study.")
+           f"Figure {fno}: The same interaction seen from the filtering side -- ideal "
+           f"low-pass accuracy-vs-cutoff, one panel per training fraction.")
     fno += 1
     h2(doc, "6.5 Error overlap")
     o = f.overlap_at(100)

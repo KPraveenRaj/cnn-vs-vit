@@ -127,6 +127,49 @@ def main():
           "depends on, and using it to explain the robustness ordering.")
         A("")
 
+    # ----------------------------------------------------------- contribution
+    ps = f.profile_shift()
+    if ps and "resnet50" in ps and "vit_b16" in ps:
+        r, v = ps["resnet50"], ps["vit_b16"]
+        ratio = r["max_abs"] / v["max_abs"] if v["max_abs"] else float("nan")
+        A("## 2b. YOUR CONTRIBUTION — the one result that is genuinely new")
+        A("")
+        A("Everything above (ViT more accurate, ViT more robust) is a good controlled "
+          "replication. **This is the part that is yours.**")
+        A("")
+        A(f"Change in relative retention per frequency band between 10% and 100% "
+          f"training data, averaged over {r['n_lo']} seeds. Positive = the model got "
+          f"more robust in that band as data grew:")
+        A("")
+        A("| model | " + " | ".join(r["bands"]) + " |")
+        A("|---" * (len(r["bands"]) + 1) + "|")
+        A("| **ResNet-50** | " + " | ".join(f"{x:+.3f}" for x in r["shift"]) + " |")
+        A("| **ViT-B/16** | " + " | ".join(f"{x:+.3f}" for x in v["shift"]) + " |")
+        A("")
+        A(f"**ResNet-50's spectral robustness profile moves with the data budget — "
+          f"{r['max_abs']:+.3f} in the {r['max_band']} bin band, and the movement is "
+          f"concentrated at high frequency. ViT-B/16's is essentially invariant "
+          f"({v['max_abs']:+.3f}). A {ratio:.0f}x difference.**")
+        A("")
+        A("**How to say it:** the CNN has to *learn* high-frequency robustness from the "
+          "fine-tuning data. The transformer inherits a spectrally flat robustness "
+          "profile from pre-training and does not need downstream data to acquire it.")
+        A("")
+        A("**Why this matters:** it is a *mechanism* for the data-efficiency result, "
+          "not a restatement of it. ViT's advantage is largest exactly where the CNN "
+          "has least data from which to learn what the ViT already has. Three axes — "
+          "accuracy, robustness, frequency — become one story.")
+        A("")
+        A("**How it differs from Park & Kim (2022),** which your guide will probably "
+          "raise: they show the two families differ in frequency response at full scale "
+          "and largely from scratch. You show that difference is *itself data-dependent* "
+          "for one family and not the other — visible only under a protocol that varies "
+          "the data budget while holding everything else fixed.")
+        A("")
+        A("Figure: `results/figures/fig_frequency_shift.pdf`. Deck slide: "
+          "\"Frequency reliance × data fraction\" in both review decks. Report: §6.4.")
+        A("")
+
     # -------------------------------------------------------- protocol story
     if sf:
         A("## 3. The methodology finding (your best viva material)")

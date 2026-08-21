@@ -194,6 +194,46 @@ class Facts:
         out["total"] = out["test"] + out["val"] + out["train_f100"]
         return out
 
+    def profile_shift(self, lo=10, hi=100):
+        """How much each model's spectral robustness profile MOVES with data budget.
+
+        Returns {model: {"bands": [...], "lo": [...], "hi": [...], "shift": [...],
+                         "max_abs": float, "max_band": str, "n_lo": int, "n_hi": int}}
+        using relative retention (band accuracy / that run's own clean accuracy),
+        which is the only normalisation under which a 10%-data and a 100%-data run
+        are comparable on one axis. None if the battery has not covered both ends.
+        """
+        import json
+        import numpy as np
+        out = {}
+        for model in ("resnet50", "vit_b16"):
+            got = {}
+            for frac in (lo, hi):
+                rows = []
+                for seed in (0, 1, 2):
+                    p = (REPO_ROOT / "results" / "runs" /
+                         f"{model}_caltech256_f{frac}_s{seed}_fullft" / "eval_results.json")
+                    if not p.exists():
+                        continue
+                    r = json.loads(p.read_text())
+                    b = r.get("frequency", {}).get("band_noise", {})
+                    if not b or "clean" not in r:
+                        continue
+                    ks = sorted(b, key=lambda x: int(x.split("-")[0]))
+                    rows.append([b[k]["top1"] / r["clean"]["top1"] for k in ks])
+                if rows:
+                    got[frac] = (np.array(rows), ks)
+            if lo in got and hi in got:
+                a_lo, ks = got[lo]
+                a_hi, _ = got[hi]
+                shift = a_hi.mean(0) - a_lo.mean(0)
+                i = int(np.abs(shift).argmax())
+                out[model] = {"bands": ks, "lo": a_lo.mean(0).tolist(),
+                              "hi": a_hi.mean(0).tolist(), "shift": shift.tolist(),
+                              "max_abs": float(abs(shift[i])), "max_band": ks[i],
+                              "n_lo": len(a_lo), "n_hi": len(a_hi)}
+        return out or None
+
     def schedule_finding(self):
         """The schedule/early-stopping result, read from the runs that produced it.
 

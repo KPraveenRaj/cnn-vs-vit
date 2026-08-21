@@ -459,13 +459,35 @@ def _core_story(prs, f, final=False):
           top=I(5.3), col_w=[1, 1, 1, 1.4])
 
     s = slide(prs, "Frequency reliance × data fraction", kicker="7 · Contribution")
+    if f.figure("fig_frequency_shift.png"):
+        picture(s, f.figure("fig_frequency_shift.png"), top=I(1.6), max_h=I(3.9))
+    ps = f.profile_shift()
+    if ps and "resnet50" in ps and "vit_b16" in ps:
+        r, v = ps["resnet50"], ps["vit_b16"]
+        ratio = r["max_abs"] / v["max_abs"] if v["max_abs"] else float("nan")
+        bullets(s, [
+            (0, f"ResNet-50's spectral robustness profile MOVES with the data budget — "
+                f"largest shift {r['max_abs']:+.3f} in the {r['max_band']} bin band. "
+                f"ViT-B/16's is essentially invariant ({v['max_abs']:+.3f}). "
+                f"A {ratio:.0f}x difference.", True),
+            (0, "Read plainly: the CNN has to LEARN high-frequency robustness from the "
+                "fine-tuning data. The transformer arrives with it from pre-training and "
+                "does not need the data to acquire it — which is exactly why its "
+                "advantage is largest when data is scarce.", False),
+        ], top=I(5.6), size=13, height=I(1.5))
+    else:
+        bullets(s, [(0, "(battery incomplete at both ends of the fraction range)", False)],
+                top=I(5.7), size=13)
+    takeaway(s, "Prior work shows the two families differ in frequency response. "
+                "This shows that difference is data-dependent for one family and not "
+                "the other.", top=I(6.85))
+
+    s = slide(prs, "Supporting view: low-pass curves per fraction",
+              kicker="7b · Contribution")
     if f.figure("fig_frequency_interaction.png"):
         picture(s, f.figure("fig_frequency_interaction.png"), top=I(1.7), max_h=I(4.3))
-    bullets(s, [(0, "Park & Kim (ICLR 2022) show frequency differences at full scale and "
-                    "from scratch. The contribution here is the interaction: how "
-                    "frequency dependence shifts with the transfer-learning data "
-                    "fraction, and whether it predicts low-data robustness.", True)],
-            top=I(6.1), size=14, height=I(1.0))
+    caption(s, "Ideal low-pass accuracy-vs-cutoff, one panel per training fraction. "
+               "The same interaction seen from the filtering side.", top=I(6.3))
 
     s = slide(prs, "Error overlap and calibration", kicker="8 · Supporting")
     o = f.overlap_at(100)

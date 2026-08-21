@@ -209,6 +209,63 @@ def fig_frequency_interaction(long, out_dir):
           "results/tables/curves_long.csv")
 
 
+def fig_frequency_shift(long, out_dir):
+    """THE contribution figure: does the frequency profile MOVE with data budget?
+
+    Accuracy is divided by each run's own clean accuracy, so the curves answer
+    "what fraction of this model's ability survives noise in this band" rather
+    than "how accurate is this model" — which is the only way a low-data and a
+    high-data run can be compared on the same axis at all.
+    """
+    d = long[long["curve"] == "frequency:band_noise"] if not long.empty else pd.DataFrame()
+    if d.empty:
+        return
+    d = d[d["regime"] == "fullft"]
+    fracs = [f for f in (10, 100) if f in set(d["fraction"])]
+    models = sorted(d["model_name"].unique())
+    if len(fracs) < 2 or not models:
+        return
+
+    clean = master_clean_lookup()
+    fig, axes = plt.subplots(1, len(models), figsize=(5.4 * len(models), 4.5), sharey=True)
+    axes = np.atleast_1d(axes)
+    for ax, model in zip(axes, models):
+        for frac, ls, alpha, mk in ((fracs[0], "--", 0.55, "s"), (fracs[-1], "-", 1.0, "o")):
+            g = d[(d["model_name"] == model) & (d["fraction"] == frac)].copy()
+            if g.empty:
+                continue
+            g["rel"] = [r["top1"] / clean.get((r["run_id"]), np.nan) for _, r in g.iterrows()]
+            a = g.groupby("x_norm")["rel"].agg(["mean", "std", "count"]).reset_index()
+            a["std"] = a["std"].fillna(0.0)
+            ax.plot(a["x_norm"], a["mean"], ls, marker=mk, color=MODEL_COLOR[model],
+                    linewidth=2.0, markersize=6, alpha=alpha, label=f"{frac}% data", zorder=3)
+            if (a["count"] > 1).any():
+                ax.fill_between(a["x_norm"], a["mean"] - a["std"], a["mean"] + a["std"],
+                                color=MODEL_COLOR[model], alpha=0.13 * alpha,
+                                linewidth=0, zorder=2)
+        ax.set_ylim(0.3, 1.05)
+        _style(ax, "centre of noise band (x Nyquist)",
+               "accuracy retained (/ own clean)" if ax is axes[0] else None,
+               MODEL_LABEL.get(model, model))
+        ax.legend(loc="lower right", fontsize=9)
+    fig.suptitle("Does the data budget change WHICH frequencies a family depends on?",
+                 fontsize=12.5, fontweight="bold", color=INK)
+    fig.tight_layout()
+    _save(fig, out_dir, "fig_frequency_shift", "Frequency profile shift with data",
+          "Relative retention under equal-energy band-limited noise, each run "
+          "normalised by its own clean accuracy, at the smallest and largest data "
+          "fractions. A gap between the two curves means the model's spectral "
+          "robustness depends on how much fine-tuning data it saw.",
+          "results/tables/curves_long.csv")
+
+
+def master_clean_lookup():
+    """run_id -> clean top-1, for normalising curves by each run's own accuracy."""
+    m = pd.read_csv(REPO_ROOT / "results" / "tables" / "master.csv")
+    col = "batt_clean_top1" if "batt_clean_top1" in m.columns else "test_top1"
+    return dict(zip(m["run_id"], m[col]))
+
+
 def fig_calibration(out_dir, tables):
     cal_p, rel_p = tables / "calibration.csv", tables / "reliability.csv"
     if not cal_p.exists():
@@ -351,6 +408,7 @@ def main():
     fig_frequency(long, out_dir)
     fig_band_noise(long, out_dir)
     fig_frequency_interaction(long, out_dir)
+    fig_frequency_shift(long, out_dir)
     fig_calibration(out_dir, tables)
     fig_error_overlap(out_dir, tables)
     fig_deployment(out_dir, tables)

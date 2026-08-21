@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-22 02:51 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-22 03:36 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -34,7 +34,7 @@ Note the **inversion**: ViT's frozen features win at 10% data, but ResNet's win 
 
 ## 2. The mechanism — why ViT is more robust
 
-The evaluation battery has run on **16 of 24** checkpoints, 42 inference passes each.
+The evaluation battery has run on **19 of 24** checkpoints, 42 inference passes each.
 
 Under equal-energy noise confined to one frequency band (f100):
 
@@ -46,6 +46,27 @@ Under equal-energy noise confined to one frequency band (f100):
 **The story:** ResNet-50 has a sharp low-frequency vulnerability — it collapses in the 8–16 bin band. ViT-B/16's profile is far flatter with no comparable weak band. That difference *predicts* the corruption results: ViT degrades far more gracefully under Gaussian noise, blur and JPEG, and the margin widens with severity.
 
 This is what turns the project from a benchmark into a characterisation. You are not just reporting that one model is more robust; you are showing which part of the input spectrum each family depends on, and using it to explain the robustness ordering.
+
+## 2b. YOUR CONTRIBUTION — the one result that is genuinely new
+
+Everything above (ViT more accurate, ViT more robust) is a good controlled replication. **This is the part that is yours.**
+
+Change in relative retention per frequency band between 10% and 100% training data, averaged over 3 seeds. Positive = the model got more robust in that band as data grew:
+
+| model | 0-8 | 8-16 | 16-32 | 32-56 | 56-88 | 88-159 |
+|---|---|---|---|---|---|---|
+| **ResNet-50** | +0.019 | +0.015 | +0.021 | +0.060 | +0.124 | +0.263 |
+| **ViT-B/16** | -0.008 | +0.017 | +0.008 | +0.022 | +0.016 | +0.010 |
+
+**ResNet-50's spectral robustness profile moves with the data budget — +0.263 in the 88-159 bin band, and the movement is concentrated at high frequency. ViT-B/16's is essentially invariant (+0.022). A 12x difference.**
+
+**How to say it:** the CNN has to *learn* high-frequency robustness from the fine-tuning data. The transformer inherits a spectrally flat robustness profile from pre-training and does not need downstream data to acquire it.
+
+**Why this matters:** it is a *mechanism* for the data-efficiency result, not a restatement of it. ViT's advantage is largest exactly where the CNN has least data from which to learn what the ViT already has. Three axes — accuracy, robustness, frequency — become one story.
+
+**How it differs from Park & Kim (2022),** which your guide will probably raise: they show the two families differ in frequency response at full scale and largely from scratch. You show that difference is *itself data-dependent* for one family and not the other — visible only under a protocol that varies the data budget while holding everything else fixed.
+
+Figure: `results/figures/fig_frequency_shift.pdf`. Deck slide: "Frequency reliance × data fraction" in both review decks. Report: §6.4.
 
 ## 3. The methodology finding (your best viva material)
 
@@ -116,7 +137,7 @@ Generated once, committed to git, and never used for any decision — every lear
 
 ## 6. What is not finished
 
-- **Evaluation battery: 16 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
+- **Evaluation battery: 19 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
 - **Food-101 confirmation: not yet run.** Data and splits are staged. It is the declared first thing to cut, so its absence is a documented scope decision, not a gap.
 - **Attention maps / Grad-CAM:** listed in the plan as qualitative extras only if time permits. Not started, and not required by any committed figure.
 
