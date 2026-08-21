@@ -8,7 +8,11 @@ PY=${PY:-$HOME/miniconda3/envs/torch_env/bin/python}
 mkdir -p logs
 say() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] === $* ===" | tee -a logs/pipeline.log; }
 
-while pgrep -f "apply_schedule_fix\.sh" >/dev/null; do sleep 300; done
+# NOTE: do NOT wait on apply_schedule_fix.sh — that script ends with `exec`,
+# which REPLACES its own shell process, so the name disappears from the process
+# table the moment the matrix starts and any such wait returns instantly. Wait
+# on the actual worker instead.
+while pgrep -f "src\.train\.run_matrix" >/dev/null; do sleep 300; done
 say "STAGE 3  linear probes (both models, 4 fractions x 3 seeds)"
 for M in resnet50 vit_b16; do
   $PY -m src.train.linear_probe --model configs/model_${M}.yaml \
