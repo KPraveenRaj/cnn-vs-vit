@@ -33,6 +33,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.utils.runid import parse_run_id
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NYQUIST = 112.0
 
@@ -106,11 +108,11 @@ def _extra_tables(runs_dir, tables, master):
         if not ce.exists() or "sweep" in run_dir.name:
             continue
         c = _json.loads(ce.read_text())
-        parts = run_dir.name.split("_")
+        r = parse_run_id(run_dir.name)
         for cls, acc in enumerate(c["per_class_acc"]):
-            rows.append({"run_id": run_dir.name, "model_name": parts[0],
-                         "fraction": int(parts[2][1:]), "seed": int(parts[3][1:]),
-                         "regime": parts[4], "class_id": cls, "accuracy": acc})
+            rows.append({"run_id": run_dir.name, "model_name": r.model_name,
+                         "dataset": r.dataset, "fraction": r.fraction, "seed": r.seed,
+                         "regime": r.regime, "class_id": cls, "accuracy": acc})
     if rows:
         pd.DataFrame(rows).to_csv(tables / "per_class.csv", index=False)
 

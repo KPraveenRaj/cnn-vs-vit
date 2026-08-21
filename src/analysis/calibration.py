@@ -33,6 +33,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.utils.runid import parse_run_id
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -74,12 +76,10 @@ def main():
         correct = df["correct"].to_numpy(dtype=bool)
         ece, mce, rows = calibration_stats(conf, correct, args.n_bins)
 
-        parts = run_dir.name.split("_")
-        meta = {"run_id": run_dir.name, "model_name": parts[0],
-                "dataset": parts[1] if len(parts) > 1 else "",
-                "fraction": int(parts[2][1:]) if len(parts) > 2 else np.nan,
-                "seed": int(parts[3][1:]) if len(parts) > 3 else np.nan,
-                "regime": parts[4] if len(parts) > 4 else ""}
+        r = parse_run_id(run_dir.name)
+        meta = {"run_id": run_dir.name, "model_name": r.model_name,
+                "dataset": r.dataset, "fraction": r.fraction,
+                "seed": r.seed, "regime": r.regime}
         summary.append({**meta, "n": len(df), "accuracy": float(correct.mean()),
                         "mean_confidence": float(conf.mean()),
                         "overconfidence_gap": float(conf.mean() - correct.mean()),

@@ -35,6 +35,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.utils.runid import parse_run_id
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -57,9 +59,9 @@ def main():
         pq = run_dir / "predictions.parquet"
         if not pq.exists() or "sweep" in run_dir.name:
             continue
-        parts = run_dir.name.split("_")
-        key = (parts[1], int(parts[2][1:]), int(parts[3][1:]), parts[4])  # ds, frac, seed, regime
-        tables.setdefault(key, {})[parts[0]] = pd.read_parquet(pq)
+        r = parse_run_id(run_dir.name)
+        key = (r.dataset, r.fraction, r.seed, r.regime)
+        tables.setdefault(key, {})[r.model_name] = pd.read_parquet(pq)
 
     rows = []
     for (ds, frac, seed, regime), by_model in sorted(tables.items()):

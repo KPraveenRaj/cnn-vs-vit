@@ -2,3 +2,7 @@ model_name,dataset,fraction,seed,lr,epochs_ran,best_val_top1,best_val_top5,total
 resnet50,caltech256,100,0,0.0001,8,0.8707505890272635,0.96668,10.0,resnet50_caltech256_f100_s0_fullft-sweep-lr1e-4,False
 resnet50,caltech256,100,0,0.0003,8,0.8943116795691687,0.97004,10.2,resnet50_caltech256_f100_s0_fullft-sweep-lr3e-4,True
 resnet50,caltech256,100,0,0.001,8,0.8902726354762707,0.96769,10.0,resnet50_caltech256_f100_s0_fullft-sweep-lr1e-3,False
+vit_b16,caltech256,100,0,1e-05,8,0.8552675866711545,0.95523,32.7,vit_b16_caltech256_f100_s0_fullft-sweep-lr1e-5,False
+vit_b16,caltech256,100,0,3e-05,8,0.8959946146078761,0.9687,34.8,vit_b16_caltech256_f100_s0_fullft-sweep-lr3e-5,False
+vit_b16,caltech256,100,0,0.0001,8,0.9037361157859307,0.97375,33.3,vit_b16_caltech256_f100_s0_fullft-sweep-lr1e-4,True
+vit_b16,caltech256,100,0,0.0003,8,0.865028609895658,0.96096,31.6,vit_b16_caltech256_f100_s0_fullft-sweep-lr3e-4,False

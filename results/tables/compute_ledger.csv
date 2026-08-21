@@ -1,2 +1,3 @@
 dataset,regime,model_name,runs,gpu_hours,mean_run_min,total_epochs
 caltech256,fullft,resnet50,12,2.65,13.258333333333333,276
+caltech256,fullft,vit_b16,2,0.42,12.5,43
