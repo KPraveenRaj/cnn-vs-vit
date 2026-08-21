@@ -58,6 +58,7 @@ $PY -m src.analysis.calibration      2>&1 | tee -a logs/analysis.log
 $PY -m src.analysis.error_overlap    2>&1 | tee -a logs/analysis.log
 $PY -m src.analysis.visual_assets    2>&1 | tee -a logs/analysis.log
 $PY -m src.analysis.plots            2>&1 | tee -a logs/analysis.log
+$PY -m src.analysis.docs_index       2>&1 | tee -a logs/analysis.log
 
 # 7. Food-101 confirmation block, explicitly last and opt-in ---------------
 if [ "${FOOD101:-0}" = "1" ]; then
@@ -66,5 +67,9 @@ if [ "${FOOD101:-0}" = "1" ]; then
   $PY -m src.analysis.aggregate 2>&1 | tee -a logs/analysis.log
   $PY -m src.analysis.plots     2>&1 | tee -a logs/analysis.log
 fi
+
+say "STAGE 8  rebuild decks and reports from the final tables"
+$PY report/build/build_decks.py   2>&1 | tee -a logs/analysis.log
+$PY report/build/build_reports.py 2>&1 | tee -a logs/analysis.log
 
 say "PIPELINE COMPLETE"

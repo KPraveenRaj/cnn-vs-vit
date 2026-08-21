@@ -23,7 +23,7 @@ EXPECT_IMAGES=101000
 if [ ! -d food-101/images ]; then
   if [ ! -f food-101.tar.gz ]; then
     echo "[food101] downloading official tarball (~5.0 GB, resumable) ..."
-    curl -L -C - -o food-101.tar.gz "$URL"
+    curl -L -C - --no-progress-meter -o food-101.tar.gz "$URL"
   fi
   echo "[food101] extracting ..."
   tar -xzf food-101.tar.gz
