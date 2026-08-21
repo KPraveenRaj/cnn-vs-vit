@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-22 03:36 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-22 05:07 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -34,7 +34,7 @@ Note the **inversion**: ViT's frozen features win at 10% data, but ResNet's win 
 
 ## 2. The mechanism — why ViT is more robust
 
-The evaluation battery has run on **19 of 24** checkpoints, 42 inference passes each.
+The evaluation battery has run on **24 of 24** checkpoints, 42 inference passes each.
 
 Under equal-energy noise confined to one frequency band (f100):
 
@@ -137,7 +137,7 @@ Generated once, committed to git, and never used for any decision — every lear
 
 ## 6. What is not finished
 
-- **Evaluation battery: 19 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
+- **Evaluation battery: 24 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
 - **Food-101 confirmation: not yet run.** Data and splits are staged. It is the declared first thing to cut, so its absence is a documented scope decision, not a gap.
 - **Attention maps / Grad-CAM:** listed in the plan as qualitative extras only if time permits. Not started, and not required by any committed figure.
 

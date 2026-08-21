@@ -2,10 +2,10 @@ resolution: 224
 num_workers: 8
 optimizer: adamw
 weight_decay: 0.05
-epochs: 30
+epochs: 15
 schedule: cosine
 warmup_epochs: 3
-early_stop_patience: 5
+early_stop_patience: 8
 effective_batch_size: 64
 amp: true
 train_aug:
@@ -20,6 +20,7 @@ timm_name: resnet50.a1_in1k
 lr: 0.0003
 micro_batch_size: 64
 grad_accum_steps: 1
+probe_lr: 0.1
 dataset: food101
 root: data/raw/food101/food-101/images
 num_classes: 101
