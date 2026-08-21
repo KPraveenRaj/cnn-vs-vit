@@ -370,6 +370,42 @@ def deck_progress_04(f):
     save(prs, OUT / "progress_04_mechanism.pptx")
 
 
+def _schedule_slide(prs, f):
+    """A protocol bug worth presenting: it would have inverted the headline."""
+    I = __import__("pptx").util.Inches
+    sf = f.schedule_finding()
+    s = slide(prs, "A protocol bug that would have inverted the result",
+              kicker="Methodology finding")
+    if not sf:
+        bullets(s, [(0, "(archive not present)", False)])
+        return s
+    rows = []
+    for m, name in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16")):
+        r = sf[m]
+        cell = lambda k: f"{r[k][0]*100:.2f}" if r.get(k) else "—"
+        hit, tot = sf["early_stop_counts"][m]
+        rows.append([name, cell("truncated"), cell("annealed_8"), cell("annealed_15"),
+                     f"{hit}/{tot}"])
+    table(s, ["Model", "30-ep TRUNCATED", "8-ep annealed", "15-ep annealed",
+              "runs early-stopped"], rows, col_w=[1.2, 1.3, 1.2, 1.2, 1.3])
+    bullets(s, [
+        (0, "The declared 30-epoch cosine plus patience-5 early stopping were fighting "
+            "each other: at epoch 8 the learning rate is still ~9e-5, so validation sits "
+            "on a noisy plateau and patience expired BEFORE the annealing phase that "
+            "converges the model.", True),
+        (0, "The cost was 15x larger for the transformer (2.7-3.0 pp vs 0.2 pp) — not a "
+            "neutral protocol choice, but a silent bias in exactly the comparison this "
+            "project exists to make.", False),
+        (0, "Under the truncated schedule the measured gap decayed and reversed "
+            "(+1.38 → +0.91 → −0.45 pp). Under the corrected one it never crosses. Same "
+            "data, same seeds; the only difference is whether the cosine was allowed to "
+            "finish.", True),
+        (0, "Fixed before the final matrix, both arms rerun identically, superseded runs "
+            "archived rather than deleted.", False),
+    ], top=I(3.15), size=15)
+    return s
+
+
 def _core_story(prs, f, final=False):
     """Slides shared by the mid-sem and end-sem decks."""
     I = __import__("pptx").util.Inches
@@ -398,6 +434,8 @@ def _core_story(prs, f, final=False):
         (0, "Every checkpoint then passes one evaluation battery: 42 inference passes "
             "covering clean metrics, corruption robustness and frequency sensitivity.", True),
     ], top=I(4.2))
+
+    _schedule_slide(prs, f)
 
     s = slide(prs, "Data efficiency", kicker="4 · Result")
     _eff_table(f, s, regimes=("fullft", "linprobe"))

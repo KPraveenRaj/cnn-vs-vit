@@ -209,6 +209,46 @@ def _body(doc, f, final):
               "CNN grid would have placed the transformer's optimum at or below the "
               "bottom edge of the search.")
 
+    h2(doc, "3.6 A protocol interaction worth recording")
+    sf = f.schedule_finding()
+    if sf:
+        para(doc, "The originally declared schedule — a 30-epoch cosine with early "
+                  "stopping at patience 5 — turned out to be self-defeating, and the "
+                  "way it failed is instructive enough to report rather than quietly "
+                  "correct. Over 30 epochs the learning rate is still around 9e-5 at "
+                  "epoch 8, so validation accuracy sits on a noisy plateau; patience "
+                  "expired there and terminated runs before the annealing phase that "
+                  "actually converges the model.")
+        rows = []
+        for m, name in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16")):
+            r = sf[m]
+            cell = lambda k: f"{r[k][0]*100:.2f}" if r.get(k) else "—"
+            hit, tot = sf["early_stop_counts"][m]
+            rows.append([name, cell("truncated"), cell("annealed_8"),
+                         cell("annealed_15"), f"{hit} of {tot}"])
+        table(doc, ["Model", "30-ep truncated", "8-ep annealed", "15-ep annealed",
+                    "Runs early-stopped"], rows,
+              f"Table {tno}: Best validation top-1 at f100, seed 0, identical learning "
+              f"rate and seed, under three schedules. The final column counts how many "
+              f"runs of the full grid terminated early under the truncated protocol.",
+              widths=[1.2, 1.2, 1.1, 1.1, 1.2])
+        tno += 1
+        para(doc, "The asymmetry is the point. Truncation cost the transformer 2.7 to "
+                  "3.0 percentage points and the convolutional network 0.2 — a factor "
+                  "of roughly fifteen. Every ViT run in the grid early-stopped, against "
+                  "eight of twelve for ResNet-50, and the ViT's best epoch moved earlier "
+                  "as the data fraction grew (14 to 17 at f10, 3 at f100), which is the "
+                  "signature of stopping on plateau noise rather than on convergence.")
+        para(doc, "Measured under the truncated protocol, the accuracy gap between the "
+                  "two families decayed with data and reversed sign (+1.38, +0.91, "
+                  "-0.45 percentage points at 10, 25 and 50 percent). Measured under the "
+                  "corrected one, on the same data with the same seeds, it never "
+                  "crosses. A conclusion about architecture would therefore have been a "
+                  "conclusion about whether the cosine schedule was allowed to finish.")
+        para(doc, "The schedule was corrected before the final matrix, both arms were "
+                  "rerun under it identically, and the superseded runs are retained "
+                  "under results/archive/ for inspection.")
+
     h1(doc, "4. Evaluation battery")
     para(doc, "Every checkpoint passes the same inference-only battery of 42 passes over "
               "the frozen test set: clean metrics; three corruption families at five "

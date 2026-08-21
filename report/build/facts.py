@@ -194,6 +194,52 @@ class Facts:
         out["total"] = out["test"] + out["val"] + out["train_f100"]
         return out
 
+    def schedule_finding(self):
+        """The schedule/early-stopping result, read from the runs that produced it.
+
+        Superseded runs live under results/archive/ep30_truncated/ and the
+        12-epoch probe under its own suffixed run, so this table is generated
+        from disk like everything else rather than transcribed from a console.
+        Returns None if the archive is absent (e.g. a fresh clone).
+        """
+        import json
+        arch = REPO_ROOT / "results" / "archive" / "ep30_truncated" / "runs"
+        runs = REPO_ROOT / "results" / "runs"
+        if not arch.is_dir():
+            return None
+
+        def best(p):
+            f = p / "metrics.json"
+            if not f.exists():
+                return None
+            m = json.loads(f.read_text())
+            return m["best_val_top1"], m["epochs_cap"], m["epochs_ran"], m["early_stopped"]
+
+        out = {}
+        for model in ("resnet50", "vit_b16"):
+            cell = f"{model}_caltech256_f100_s0_fullft"
+            sweep_lr = {"resnet50": "3e-4", "vit_b16": "1e-4"}[model]
+            row = {
+                "truncated": best(arch / cell),
+                "annealed_8": best(runs / f"{cell}-sweep-lr{sweep_lr}"),
+                "annealed_15": best(runs / cell),
+            }
+            row["annealed_12"] = best(runs / f"{cell}-diag-ep12")
+            out[model] = row
+
+        # how often the truncated protocol early-stopped, per model
+        stops = {}
+        for model in ("resnet50", "vit_b16"):
+            tot = hit = 0
+            for d in arch.glob(f"{model}_caltech256_f*_s*_fullft"):
+                b = best(d)
+                if b:
+                    tot += 1
+                    hit += bool(b[3])
+            stops[model] = (hit, tot)
+        out["early_stop_counts"] = stops
+        return out
+
     def figure(self, name):
         """Absolute path to a figure, or None if it does not exist yet."""
         for base in (FIGURES, ASSETS):
