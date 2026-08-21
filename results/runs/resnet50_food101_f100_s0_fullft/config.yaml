@@ -2,10 +2,10 @@ resolution: 224
 num_workers: 8
 optimizer: adamw
 weight_decay: 0.05
-epochs: 15
+epochs: 30
 schedule: cosine
 warmup_epochs: 3
-early_stop_patience: 8
+early_stop_patience: 5
 effective_batch_size: 64
 amp: true
 train_aug:
@@ -20,27 +20,21 @@ timm_name: resnet50.a1_in1k
 lr: 0.0003
 micro_batch_size: 64
 grad_accum_steps: 1
-dataset: caltech256
-root: data/raw/caltech256/256_ObjectCategories
-exclude_classes:
-- 257.clutter
-num_classes: 256
-splits_dir: data/splits/caltech256
+dataset: food101
+root: data/raw/food101/food-101/images
+num_classes: 101
+splits_dir: data/splits/food101
 split_ratios:
   train: 0.7
   val: 0.1
   test: 0.2
 fractions:
-- 10
 - 25
-- 50
 - 100
 seeds:
 - 0
-- 1
-- 2
-fraction: 10
+fraction: 100
 seed: 0
 regime: fullft
 warmup_epochs_actual: 3
-run_id: resnet50_caltech256_f10_s0_fullft
+run_id: resnet50_food101_f100_s0_fullft

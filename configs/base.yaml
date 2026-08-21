@@ -14,10 +14,38 @@ num_workers: 8
 # --- Optimization (DRAFT until Phase-1 baselines) ---
 optimizer: adamw            # one optimizer family for both models
 weight_decay: 0.05          # DRAFT
-epochs: 30                  # hard cap; early stopping usually ends runs sooner
+epochs: 15                  # the cosine MUST complete within this budget — see below
 schedule: cosine
 warmup_epochs: 3            # linear warmup, then cosine decay (auto-shortened for short runs)
-early_stop_patience: 5      # on val top-1
+early_stop_patience: 8      # on val top-1; a divergence net, not the normal exit
+# ^ REVISED 2026-08-21, before the final matrix, after measuring a schedule bug.
+#
+#   The original 30/5 pairing was self-defeating. Over a 30-epoch cosine the LR
+#   is still ~9e-5 at epoch 8, so validation sits on a noisy plateau; patience 5
+#   expired there and killed every run BEFORE the annealing phase that actually
+#   converges the model. Measured on f100 seed 0, same LR, same seed:
+#
+#       ViT-B/16    8-epoch annealed 0.9037 | 12-epoch annealed 0.9004
+#                                            | 30-epoch TRUNCATED 0.8734
+#       ResNet-50   8-epoch annealed 0.8943 | 30-epoch TRUNCATED 0.8920
+#
+#   i.e. the truncation cost the transformer 2.7-3.0 pp and the CNN 0.2 pp — a
+#   15x asymmetry, which silently biased the one comparison this project exists
+#   to make, and inverted the f100 ordering. Every ViT run early-stopped; ViT's
+#   best epoch moved EARLIER as data grew (f10: 14-17, f100: 3), which is the
+#   signature of stopping on plateau noise rather than on convergence.
+#
+#   Why 15: the anneal is what matters, not the budget — 8 and 12 epochs both
+#   reach ~0.90 at f100. But the completed ep30 runs show the small fractions
+#   need room (ViT peaks at epoch 14-17 on f10, ResNet at 18-25), so a shorter
+#   budget would trade one bias for another. 15 anneals fully AND clears f10.
+#
+#   Why patience 8: with 15 epochs it cannot fire before epoch 9, and only after
+#   8 consecutive non-improving epochs — genuine divergence, not plateau noise.
+#
+#   The declared LR sweeps are unaffected: they already used a fully annealed
+#   8-epoch cosine, the same shape as this protocol, so their ranking stands.
+#   The superseded runs are kept under results/archive/ep30_truncated/.
 effective_batch_size: 64    # fixed for both models: micro_batch x grad_accum
 
 # --- Memory (mandatory on 8 GB VRAM) ---

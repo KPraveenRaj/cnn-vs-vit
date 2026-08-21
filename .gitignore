@@ -19,6 +19,11 @@ data/raw/*
 !data/raw/.gitkeep
 results/checkpoints/*
 !results/checkpoints/.gitkeep
+# Archived superseded runs: keep their metadata (configs, logs, metrics) but
+# never their weights — an archive directory is outside the results/checkpoints
+# rule above, and `git add -A` will happily try to stage 300 MB .pt files.
+results/archive/**/checkpoints/
+*.pt
 results/features/
 
 # Python

@@ -2,10 +2,10 @@ resolution: 224
 num_workers: 8
 optimizer: adamw
 weight_decay: 0.05
-epochs: 15
+epochs: 30
 schedule: cosine
 warmup_epochs: 3
-early_stop_patience: 8
+early_stop_patience: 5
 effective_batch_size: 64
 amp: true
 train_aug:
