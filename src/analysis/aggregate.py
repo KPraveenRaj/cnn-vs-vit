@@ -176,7 +176,11 @@ def main():
         mpath = run_dir / "metrics.json"
         if not mpath.exists():
             continue
-        if "sweep" in run_dir.name and not args.include_sweeps:
+        # Exclude ANY suffixed run, not just those matching "sweep". Suffixed
+        # runs are probes of the protocol (LR sweeps, schedule diagnostics), not
+        # matrix cells — and they reuse a real cell's fraction/seed, so letting
+        # one through silently double-counts that seed.
+        if parse_run_id(run_dir.name).suffix and not args.include_sweeps:
             continue
         m = json.loads(mpath.read_text())
         row = {k: m.get(k) for k in (
