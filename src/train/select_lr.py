@@ -48,18 +48,34 @@ def main():
     print(f"[select-lr] grid: {grid}")
     print(f"[select-lr] winner: lr={best_lr:g} (val top-1 {best_v1:.4f}, {best_run})")
 
-    interior = 0 < results.index(next(r for r in results if r[0] == best_lr)) < len(results) - 1
+    idx = results.index(next(r for r in results if r[0] == best_lr))
+    interior = 0 < idx < len(results) - 1
     if not interior:
-        print("[select-lr] WARNING: winner is at a grid EDGE — the true optimum may lie "
-              "outside the swept range. Recorded as-is; note it in the report.")
+        print("[select-lr] WARNING: winner is at a grid EDGE — the true optimum may "
+              "lie outside the swept range, i.e. this model may be under-tuned.")
 
     path = REPO_ROOT / args.model_yaml
     text = path.read_text()
+    # The comment is regenerated from the runs on disk, so it can never disagree
+    # with them — including the point count, which changes if the grid had to be
+    # extended, and whether the optimum ended up bracketed.
+    n = len(results)
+    if interior:
+        verdict = ("#   The winner is an INTERIOR grid point, so the optimum is bracketed on\n"
+                   "#   both sides rather than sitting at the edge of the search.\n")
+    else:
+        verdict = ("#   WARNING: the winner is at a grid EDGE, so the optimum is NOT bracketed\n"
+                   "#   and this model may be under-tuned. Extend the grid in that direction\n"
+                   "#   before trusting any cross-model comparison built on this LR.\n")
+    extended = ("#   The grid was EXTENDED beyond the original 3 declared points because the\n"
+                "#   first winner landed on an edge — an under-tuned model would otherwise\n"
+                "#   manufacture a result out of a tuning artefact.\n") if n > 3 else ""
     comment = (f"lr: {best_lr:g}\n"
-               f"# ^ Set by the declared 3-point LR sweep ({time.strftime('%Y-%m-%d')}; "
+               f"# ^ Set by the declared {n}-point LR sweep ({time.strftime('%Y-%m-%d')}; "
                f"f100, seed 0, {epochs} epochs,\n"
                f"#   AdamW, effective batch 64) — selection is by best val top-1, never test:\n"
                f"#     {grid}\n"
+               f"{extended}{verdict}"
                f"#   Full records: results/runs/{args.pattern}/ and "
                f"results/tables/lr_sweep.csv\n")
     new = re.sub(r"^lr:.*?(?=^\w|\Z)", comment, text, count=1, flags=re.M | re.S)

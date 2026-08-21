@@ -39,19 +39,18 @@ for M in resnet50 vit_b16; do
       --data configs/data_caltech256.yaml 2>&1 | tee -a logs/linprobe.log
 done
 
-# 4. evaluate probe checkpoints on the frozen test set ----------------------
-say "STAGE 4  frozen-test eval for linear probes"
-for RID in $(ls results/runs | grep linprobe); do
-  [ -f "results/runs/$RID/clean_eval.json" ] && continue
-  $PY -m src.eval.evaluate --run-id "$RID" 2>&1 | tee -a logs/linprobe.log
-done
+# (Probe checkpoints are evaluated inside linear_probe.py itself, from the
+#  cached test features. src.eval.evaluate cannot be used for them: it rebuilds
+#  a full backbone and loads the checkpoint into it, but a probe checkpoint holds
+#  only an nn.Linear head. Scoring from the cache is also one matmul rather than
+#  5,952 forward passes.)
 
-# 5. the full battery over every fullft checkpoint --------------------------
-say "STAGE 5  eval battery (corruptions + frequency) over fullft checkpoints"
+# 4. the full battery over every fullft checkpoint --------------------------
+say "STAGE 4  eval battery (corruptions + frequency) over fullft checkpoints"
 $PY -m src.eval.run_eval_battery --regime fullft 2>&1 | tee -a logs/battery.log
 
-# 6. aggregate everything and regenerate all figures ------------------------
-say "STAGE 6  aggregate, analyse, plot"
+# 5. aggregate everything and regenerate all figures ------------------------
+say "STAGE 5  aggregate, analyse, plot"
 $PY -m src.utils.provenance          2>&1 | tee -a logs/analysis.log
 $PY -m src.analysis.aggregate        2>&1 | tee -a logs/analysis.log
 $PY -m src.analysis.calibration      2>&1 | tee -a logs/analysis.log
@@ -60,15 +59,15 @@ $PY -m src.analysis.visual_assets    2>&1 | tee -a logs/analysis.log
 $PY -m src.analysis.plots            2>&1 | tee -a logs/analysis.log
 $PY -m src.analysis.docs_index       2>&1 | tee -a logs/analysis.log
 
-# 7. Food-101 confirmation block, explicitly last and opt-in ---------------
+# 6. Food-101 confirmation block, explicitly last and opt-in ---------------
 if [ "${FOOD101:-0}" = "1" ]; then
-  say "STAGE 7  Food-101 confirmation block"
+  say "STAGE 6  Food-101 confirmation block"
   bash scripts/run_food101.sh 2>&1 | tee -a logs/food101.log
   $PY -m src.analysis.aggregate 2>&1 | tee -a logs/analysis.log
   $PY -m src.analysis.plots     2>&1 | tee -a logs/analysis.log
 fi
 
-say "STAGE 8  rebuild decks and reports from the final tables"
+say "STAGE 7  rebuild decks and reports from the final tables"
 $PY report/build/build_decks.py   2>&1 | tee -a logs/analysis.log
 $PY report/build/build_reports.py 2>&1 | tee -a logs/analysis.log
 

@@ -168,6 +168,47 @@ def fit_head(Xtr, ytr, Xva, yva, num_classes, lr, epochs, warmup, patience,
     return head, best, best_top5, best_ep
 
 
+@torch.no_grad()
+def write_clean_eval(head, index, feats, test_csv, run_dir, run_id, num_classes,
+                     device, best_epoch, best_val_top1):
+    """Score the frozen test set from cached features; emit evaluate.py's outputs."""
+    from sklearn.metrics import f1_score
+
+    df = pd.read_csv(test_csv)
+    X, y = gather(index, feats, test_csv)
+    head.eval()
+    logits = head(X.to(device)).float().cpu()
+    prob = logits.softmax(1)
+    conf, pred = prob.max(1)
+    preds = pred.numpy()
+    labels = y.numpy()
+    correct = preds == labels
+    top5 = logits.topk(5, dim=1).indices.numpy()
+
+    per_class = [float(correct[labels == c].mean()) if (labels == c).any() else 0.0
+                 for c in range(num_classes)]
+    summary = {
+        "run_id": run_id,
+        "checkpoint_epoch": int(best_epoch), "checkpoint_val_top1": float(best_val_top1),
+        "n_test": int(len(labels)),
+        "top1": float(correct.mean()),
+        "top5": float((top5 == labels[:, None]).any(1).mean()),
+        "macro_f1": float(f1_score(labels, preds, average="macro")),
+        "per_class_acc": [round(a, 6) for a in per_class],
+        "eval_seconds": 0.0,
+        "finished": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    (run_dir / "clean_eval.json").write_text(json.dumps(summary, indent=2))
+    pd.DataFrame({
+        "filepath": df["filepath"],
+        "label": labels.astype("int32"),
+        "pred": preds.astype("int32"),
+        "confidence": conf.numpy().astype("float32"),
+        "correct": correct,
+    }).to_parquet(run_dir / "predictions.parquet", index=False)
+    return summary
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--model", required=True)
@@ -225,6 +266,17 @@ def main():
                                              args.batch_size, device, seed, rows)
             wall = (time.perf_counter() - t0) / 60
 
+            # Frozen-test evaluation happens HERE, not via src.eval.evaluate.
+            # evaluate.py reconstructs a full backbone and loads the checkpoint into
+            # it; a probe checkpoint holds only an nn.Linear head, so that path
+            # cannot work. It is also unnecessary — the test features are already
+            # in the cache, so scoring is one matmul instead of 5,952 forward
+            # passes. Output format is byte-compatible with evaluate.py's, so probe
+            # runs are first-class citizens for aggregate / calibration /
+            # error_overlap.
+            write_clean_eval(head, index, feats, splits / "test.csv", run_dir,
+                             rid, cfg["num_classes"], device, best_ep, v1)
+
             rcfg = dict(cfg)
             rcfg.update({"fraction": frac, "seed": seed, "regime": "linprobe",
                          "lr": lr, "run_id": rid, "feature_dim": int(Xtr.shape[1]),
@@ -254,8 +306,9 @@ def main():
                 "torch": torch.__version__, "timm": timm.__version__,
                 "finished": time.strftime("%Y-%m-%d %H:%M:%S"),
             }, open(run_dir / "metrics.json", "w"), indent=2)
-            print(f"[done] {rid}: val top-1 {v1:.4f} (epoch {best_ep}), "
-                  f"n_train={len(Xtr)}, {wall:.2f} min", flush=True)
+            ce = json.loads((run_dir / "clean_eval.json").read_text())
+            print(f"[done] {rid}: val {v1:.4f} / test {ce['top1']:.4f} "
+                  f"(epoch {best_ep}), n_train={len(Xtr)}, {wall:.2f} min", flush=True)
 
 
 if __name__ == "__main__":

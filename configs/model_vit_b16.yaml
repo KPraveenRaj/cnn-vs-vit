@@ -8,16 +8,14 @@ timm_name: vit_base_patch16_224.augreg_in1k
 #   on ImageNet-1k only. Verified available in timm 1.0.27 (2026-07-04).
 
 lr: 0.0001
-# ^ Set by the declared LR sweep, EXTENDED to 4 points (2026-08-21; f100, seed 0,
-#   8 epochs,
+# ^ Set by the declared 4-point LR sweep (2026-08-21; f100, seed 0, 8 epochs,
 #   AdamW, effective batch 64) — selection is by best val top-1, never test:
 #     1e-05 -> 0.8553   3e-05 -> 0.8960   0.0001 -> 0.9037 (best)   0.0003 -> 0.8650
-#   The declared grid was the 3 points 1e-5/3e-5/1e-4, one decade below the CNN
-#   grid. 1e-4 won at the TOP EDGE, meaning the optimum was not bracketed and the
-#   ViT might simply have been under-tuned — which in this study would manufacture
-#   a data-efficiency result out of a tuning artefact. 3e-4 was therefore added;
-#   it falls off sharply (0.8650), so 1e-4 is now an INTERIOR winner and the
-#   optimum is bracketed on both sides.
+#   The grid was EXTENDED beyond the original 3 declared points because the
+#   first winner landed on an edge — an under-tuned model would otherwise
+#   manufacture a result out of a tuning artefact.
+#   The winner is an INTERIOR grid point, so the optimum is bracketed on
+#   both sides rather than sitting at the edge of the search.
 #   Full records: results/runs/vit_b16_*sweep-lr*/ and results/tables/lr_sweep.csv
 micro_batch_size: 32    # AMP + grad accumulation mandatory on 8 GB VRAM
 grad_accum_steps: 2     # 32 x 2 = 64 = effective_batch_size (base.yaml)
