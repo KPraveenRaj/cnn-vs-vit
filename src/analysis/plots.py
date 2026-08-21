@@ -258,18 +258,31 @@ def fig_error_overlap(out_dir, tables):
     ax = axes[0]
     agg = d.groupby("fraction")[["both_correct", "only_a", "only_b", "both_wrong"]].mean()
     bottom = np.zeros(len(agg))
+    # Which model is "a" and which is "b" comes from the data, not from an
+    # assumption about alphabetical order — a hard-coded pair of names silently
+    # mislabels the chart the moment a third model or a rename appears.
+    ma = MODEL_LABEL.get(d["model_a"].iloc[0], d["model_a"].iloc[0]).split(" (")[0]
+    mb = MODEL_LABEL.get(d["model_b"].iloc[0], d["model_b"].iloc[0]).split(" (")[0]
     # Sequential shades of one neutral ramp: these are parts of a whole, not
     # model identities, so they must not borrow the categorical model hues.
     for col, c, lab in zip(["both_correct", "only_a", "only_b", "both_wrong"],
                            ["#c6dbef", "#6baed6", "#2171b5", "#08306b"],
-                           ["both correct", "only ResNet-50", "only ViT-B/16", "both wrong"]):
-        ax.bar(agg.index.astype(str), agg[col], bottom=bottom, color=c, label=lab, width=0.62)
+                           ["both correct", f"only {ma}", f"only {mb}", "both wrong"]):
+        # A thin surface-coloured edge separates adjacent segments, so a stacked
+        # bar reads as parts rather than as one gradient.
+        ax.bar(agg.index.astype(str), agg[col], bottom=bottom, color=c, label=lab,
+               width=0.62, edgecolor="white", linewidth=1.5)
         bottom += agg[col].to_numpy()
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
     _style(ax, "training data per class (%)", "share of test set", "Per-image outcome split")
-    ax.legend(fontsize=8, ncol=2, loc="lower center")
+    # Below the axes, not over the data: at low fractions the "both correct" band
+    # reaches high enough that an inset legend lands on top of it.
+    ax.legend(fontsize=8, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.13),
+              columnspacing=1.0, handlelength=1.4)
 
     ax = axes[1]
+    # These two series are measures, not model identities, so they are labelled
+    # directly and carry no model colour semantics.
     for col, c, lab in (("kappa", "#2a78d6", "Cohen's kappa (correctness)"),
                         ("same_wrong_pred", "#eb6834", "same wrong label | both wrong")):
         a = d.groupby("fraction")[col].agg(["mean", "std"]).reset_index()
