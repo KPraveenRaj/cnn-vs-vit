@@ -1,0 +1,7 @@
+claim,caltech256,food101,agrees,note
+ViT-B/16 beats ResNet-50 at 25% data,+1.99 pp,pending,,
+ViT-B/16 beats ResNet-50 at 100% data,+0.76 pp,pending,,
+Gap narrows from 25% to 100% data,-1.24 pp change,pending,,
+ViT-B/16 degrades less under corruption,27.3% vs 16.7% drop,pending,,
+ViT-B/16 retains more accuracy under low-pass filtering,0.817 vs 0.789,pending,,
+ResNet's spectral profile shifts MORE than ViT's (25%->100%),0.090 vs 0.041,pending,,THE CONTRIBUTION

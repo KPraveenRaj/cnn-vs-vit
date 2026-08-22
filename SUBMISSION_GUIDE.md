@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-22 05:07 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-22 09:19 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -80,6 +80,21 @@ Mid-project, the declared schedule turned out to be self-defeating: a 30-epoch c
 It cost the transformer 2.7–3.0 pp and the CNN 0.2 — a 15× asymmetry. Under the broken protocol the measured gap decayed and reversed (+1.38 → +0.91 → −0.45 pp); under the corrected one it never crosses. **Same data, same seeds — the only difference was whether the cosine was allowed to finish.**
 
 Present this deliberately. It demonstrates that you understand the difference between an architectural result and a training artefact, and it is the honest answer to *"why does your protocol say 15 epochs?"*. The superseded runs are kept in `results/archive/ep30_truncated/` as evidence.
+
+## 3b. Does Food-101 back it up?
+
+| finding | Caltech-256 | Food-101 | verdict |
+|---|---|---|---|
+| ViT-B/16 beats ResNet-50 at 25% data | +1.99 pp | pending | pending |
+| ViT-B/16 beats ResNet-50 at 100% data | +0.76 pp | pending | pending |
+| Gap narrows from 25% to 100% data | -1.24 pp change | pending | pending |
+| ViT-B/16 degrades less under corruption | 27.3% vs 16.7% drop | pending | pending |
+| ViT-B/16 retains more accuracy under low-pass filtering | 0.817 vs 0.789 | pending | pending |
+| ResNet's spectral profile shifts MORE than ViT's (25%->100%) | 0.090 vs 0.041 | pending | pending |
+
+**How to talk about this.** Food-101 runs one seed by design, so it supports claims about *direction*, never significance. And if something differs, that is not evidence the Caltech work is wrong — the Caltech result stands on its own internal validity (frozen split, three seeds, one protocol). Disagreement would mean the finding is dataset-dependent, which is a legitimate and arguably more interesting result: it would say the CNN-versus-ViT ordering depends on how close the target task sits to the pre-training distribution.
+
+The thing that would genuinely invalidate the work is a protocol bug — which is why the schedule interaction in section 3 was worth chasing.
 
 ## 4. Which artifact to use when
 

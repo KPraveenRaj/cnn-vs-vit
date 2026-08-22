@@ -453,6 +453,34 @@ def build(final: bool):
                       "cut as a declared scope decision is more honest than reporting a "
                       "rushed single-seed result.")
 
+        h2(doc, "8.1 Does Food-101 replicate the Caltech-256 findings?")
+        rep = REPO_ROOT / "results" / "tables" / "replication.csv"
+        if rep.exists():
+            import pandas as _pd
+            rdf = _pd.read_csv(rep)
+            verdict = {True: "replicates", False: "differs", None: "pending"}
+            rows = []
+            for _, r in rdf.iterrows():
+                a = r["agrees"]
+                a = None if _pd.isna(a) else bool(a)
+                rows.append([str(r["claim"]), str(r["caltech256"]),
+                             str(r["food101"]), verdict[a]])
+            table(doc, ["Finding", "Caltech-256", "Food-101", "Verdict"], rows,
+                  f"Table {tno}: Each Caltech-256 finding re-tested on Food-101. "
+                  f"Comparisons are matched to the fractions Food-101 has (25% and "
+                  f"100%), including the spectral-profile shift, which is therefore "
+                  f"computed over a narrower data range than the headline figure.",
+                  widths=[2.2, 1.4, 1.4, 0.9])
+            tno += 1
+        para(doc, "Two cautions belong with this table. Food-101 runs a single seed "
+                  "by design, so it supports statements about direction but not about "
+                  "significance; there is no spread to test against. And a finding "
+                  "that holds on one dataset and not the other is evidence about "
+                  "dataset dependence, not evidence that the first measurement was "
+                  "wrong — the Caltech-256 result rests on its own internal validity, "
+                  "a frozen test split, three seeds and a single protocol. "
+                  "Replication speaks to generality, which is a separate claim.")
+
         h1(doc, "9. Limitations")
         for b in ["One CNN and one ViT are archetypes, not whole families; conclusions "
                   "are about these two representatives under this protocol.",

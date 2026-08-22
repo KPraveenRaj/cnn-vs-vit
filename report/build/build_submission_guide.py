@@ -201,6 +201,33 @@ def main():
           "`results/archive/ep30_truncated/` as evidence.")
         A("")
 
+    # ------------------------------------------------------------ replication
+    rep = REPO_ROOT / "results" / "tables" / "replication.csv"
+    if rep.exists():
+        import pandas as _pd
+        rdf = _pd.read_csv(rep)
+        A("## 3b. Does Food-101 back it up?")
+        A("")
+        A("| finding | Caltech-256 | Food-101 | verdict |")
+        A("|---|---|---|---|")
+        for _, r in rdf.iterrows():
+            a = r["agrees"]
+            v = "pending" if _pd.isna(a) else ("**replicates**" if a else "**differs**")
+            A(f"| {r['claim']} | {r['caltech256']} | {r['food101']} | {v} |")
+        A("")
+        A("**How to talk about this.** Food-101 runs one seed by design, so it "
+          "supports claims about *direction*, never significance. And if something "
+          "differs, that is not evidence the Caltech work is wrong — the Caltech "
+          "result stands on its own internal validity (frozen split, three seeds, one "
+          "protocol). Disagreement would mean the finding is dataset-dependent, which "
+          "is a legitimate and arguably more interesting result: it would say the "
+          "CNN-versus-ViT ordering depends on how close the target task sits to the "
+          "pre-training distribution.")
+        A("")
+        A("The thing that would genuinely invalidate the work is a protocol bug — "
+          "which is why the schedule interaction in section 3 was worth chasing.")
+        A("")
+
     # ---------------------------------------------------------- what to send
     A("## 4. Which artifact to use when")
     A("")
