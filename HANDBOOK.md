@@ -363,8 +363,8 @@ pre-trained weights with large early steps; the cosine decay lets the model
 explore early and consolidate late.
 
 **This schedule caused the project's most serious bug — see §10.1.** The final
-settings are 15 epochs with early-stopping patience 8, chosen so the cosine
-actually completes.
+settings are 15 epochs with early-stopping patience 8, chosen so
+the cosine actually completes.
 
 **Effective batch size 64** for both models, reached by gradient accumulation:
 gradients from several micro-batches are summed before an optimiser step.
@@ -729,6 +729,8 @@ Frozen-test top-1, mean ± SD over 3 seeds.
 | **100%** | 88.87 ± 0.04 | 89.62 ± 0.23 | **+0.76** |
 
 ViT-B/16 leads at every fraction, and every gap exceeds the pooled seed spread. The advantage is largest where data is scarcest — the reverse of the usual expectation, which applies to training from scratch rather than to transfer learning.
+
+**Attribution.** Both arms saw the same images, augmentation and schedule shape, each with its own swept learning rate, so this is not an artefact of unequal tuning. It belongs to the two pre-trained checkpoints *as delivered* — architecture and inductive bias, but also the pre-training recipe, which is not controlled here (see 9.9).
 
 ![Data efficiency](results/figures/fig_data_efficiency.png)
 

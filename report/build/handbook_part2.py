@@ -4,6 +4,7 @@ def sections(f, d):
     rlr, vlr = d["rlr"], d["vlr"]
     classes, total = d["classes"], d["total"]
     train, val, test = d["train"], d["val"], d["test"]
+    epochs, patience = d["epochs"], d["patience"]
     return f"""
 ---
 
@@ -118,8 +119,8 @@ pre-trained weights with large early steps; the cosine decay lets the model
 explore early and consolidate late.
 
 **This schedule caused the project's most serious bug — see §10.1.** The final
-settings are 15 epochs with early-stopping patience 8, chosen so the cosine
-actually completes.
+settings are {epochs} epochs with early-stopping patience {patience}, chosen so
+the cosine actually completes.
 
 **Effective batch size 64** for both models, reached by gradient accumulation:
 gradients from several micro-batches are summed before an optimiser step.

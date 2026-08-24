@@ -18,6 +18,13 @@ from facts import Facts
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _protocol():
+    """Live protocol constants from configs/base.yaml — never hardcode these."""
+    import yaml
+    b = yaml.safe_load((REPO_ROOT / "configs" / "base.yaml").read_text())
+    return {"epochs": b["epochs"], "patience": b["early_stop_patience"]}
+
+
 def _compute_table():
     """Measured training compute, straight from the ledger."""
     import pandas as pd
@@ -56,6 +63,12 @@ def _results_section(f):
       "spread. The advantage is largest where data is scarcest — the reverse of the "
       "usual expectation, which applies to training from scratch rather than to "
       "transfer learning.")
+    A("")
+    A("**Attribution.** Both arms saw the same images, augmentation and schedule "
+      "shape, each with its own swept learning rate, so this is not an artefact of "
+      "unequal tuning. It belongs to the two pre-trained checkpoints *as delivered* — "
+      "architecture and inductive bias, but also the pre-training recipe, which is "
+      "not controlled here (see 9.9).")
     A("")
     A("![Data efficiency](results/figures/fig_data_efficiency.png)")
     A("")
@@ -427,6 +440,7 @@ def main():
         rlr=f.lr_selected("resnet50"), vlr=f.lr_selected("vit_b16"),
         classes=d["classes"], total=d["total"], train=d["train_f100"],
         val=d["val"], test=d["test"],
+        **_protocol(),
     )
     text = (handbook_part1.sections(f, ctx)
             + handbook_part2.sections(f, ctx)
