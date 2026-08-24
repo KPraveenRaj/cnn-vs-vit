@@ -59,6 +59,23 @@ PROBLEM = ("Vision Transformers now lead image-classification benchmarks, but th
 # ==========================================================================
 # Explainer slides — vocabulary, before any result depends on it
 # ==========================================================================
+def _asym_line(f):
+    """One sentence stating what the schedule bug cost, against the ADOPTED protocol.
+
+    Not against the transformer's best annealed run: that compares to a schedule
+    which was not adopted and inflates the ratio from ~3.6x to ~13x.
+    """
+    a = f.schedule_asymmetry() or {}
+    ad = a.get("adopted")
+    if not ad:
+        return "It hurt the transformer more than the CNN. Every ViT run was cut short."
+    return (f"Measured against the schedule we adopted, it cost the transformer "
+            f"{ad['vit_b16']:.2f} points and the CNN {ad['resnet50']:.2f} — "
+            f"{ad['ratio']:.1f}x worse for the transformer. Every single ViT run was "
+            f"cut short.")
+
+
+
 def sl_question(prs, f):
     s = slide(prs, "The question, in one sentence", kicker="1 · What this is about")
     bullets(s, [
@@ -336,8 +353,7 @@ def sl_schedule_bug(prs, f):
     bullets(s, [
         (0, "Our training recipe stopped runs early, while the model was still moving "
             "fast, before the phase where it settles down and consolidates.", True),
-        (0, "It hurt the transformer 15x more than the CNN (3.0 vs 0.2 points). Every "
-            "single ViT run was cut short.", False),
+        (0, _asym_line(f), False),
         (0, "With the bug, the measured gap SHRANK with data and flipped sign. Without "
             "it, it never flips. Same data, same seeds.", True),
         (0, "Found before the final experiments, both models rerun identically, old "
@@ -361,9 +377,14 @@ after eight or nine rounds the model was still taking large steps and its score 
 bouncing around. The stopping rule saw the bouncing, concluded no progress was
 being made, and killed the run — before the settling phase ever happened.
 
-Both models were affected, but not equally. The convolutional network lost about
-0.2 percentage points. The transformer lost about three. Every single transformer
-run in the grid was cut short, against eight of twelve for the CNN.
+Both models were affected, but not equally. Measured against the schedule we
+adopted, the convolutional network lost about half a point and the transformer
+about two — so roughly a factor of four, hitting the transformer. Every single
+transformer run in the grid was cut short, against eight of twelve for the CNN.
+
+If someone asks for a bigger number: comparing against the transformer's very best
+annealed run gives about thirteen times. Do not quote that one. It measures the
+bug against a schedule we did not adopt, which overstates it.
 
 And the consequence was not cosmetic. Under the broken setting, the gap between the
 two models appeared to shrink as data grew and eventually reversed — the CNN

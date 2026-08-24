@@ -250,12 +250,24 @@ def _body(doc, f, final):
               f"runs of the full grid terminated early under the truncated protocol.",
               widths=[1.2, 1.2, 1.1, 1.1, 1.2])
         tno += 1
-        para(doc, "The asymmetry is the point. Truncation cost the transformer 2.7 to "
-                  "3.0 percentage points and the convolutional network 0.2 — a factor "
-                  "of roughly fifteen. Every ViT run in the grid early-stopped, against "
-                  "eight of twelve for ResNet-50, and the ViT's best epoch moved earlier "
-                  "as the data fraction grew (14 to 17 at f10, 3 at f100), which is the "
-                  "signature of stopping on plateau noise rather than on convergence.")
+        _a = f.schedule_asymmetry() or {}
+        _ad, _bs = _a.get("adopted", {}), _a.get("best_annealed", {})
+        para(doc, f"The asymmetry is the point. Measured against the protocol actually "
+                  f"adopted, truncation cost the transformer "
+                  f"{_ad.get('vit_b16', float('nan')):.2f} percentage points and the "
+                  f"convolutional network {_ad.get('resnet50', float('nan')):.2f} — a "
+                  f"factor of {_ad.get('ratio', float('nan')):.1f}. Every ViT run in the "
+                  f"grid early-stopped, against eight of twelve for ResNet-50, and the "
+                  f"ViT's best epoch moved earlier as the data fraction grew (14 to 17 "
+                  f"at f10, 3 at f100), which is the signature of stopping on plateau "
+                  f"noise rather than on convergence.")
+        para(doc, f"One caution on quoting that ratio. Comparing the truncated runs "
+                  f"against the transformer's best annealed result — the 8-epoch "
+                  f"schedule — gives a much larger "
+                  f"{_bs.get('ratio', float('nan')):.1f}. But that schedule was not the "
+                  f"one adopted, and measuring a defect against a counterfactual that "
+                  f"was not chosen overstates it. The adopted comparison is reported "
+                  f"here.")
         para(doc, "Measured under the truncated protocol, the accuracy gap between the "
                   "two families decayed with data and reversed sign (+1.38, +0.91, "
                   "-0.45 percentage points at 10, 25 and 50 percent). Measured under the "

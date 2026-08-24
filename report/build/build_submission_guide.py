@@ -267,7 +267,14 @@ def main():
             A(f"| {name} | {cell('truncated')} | {cell('annealed_8')} | "
               f"{cell('annealed_15')} | {hit} of {tot} |")
         A("")
-        A("It cost the transformer 2.7–3.0 pp and the CNN 0.2 — a 15× asymmetry. "
+        _a = f.schedule_asymmetry() or {}
+        _ad, _bs = _a.get("adopted", {}), _a.get("best_annealed", {})
+        A(f"Measured against the protocol actually adopted, it cost the transformer "
+          f"{_ad.get('vit_b16', float('nan')):+.2f} pp and the CNN "
+          f"{_ad.get('resnet50', float('nan')):+.2f} pp — a "
+          f"{_ad.get('ratio', float('nan')):.1f}x asymmetry. (Against the ViT's best "
+          f"annealed run it looks like {_bs.get('ratio', float('nan')):.1f}x, but that "
+          f"compares to a schedule we did not adopt — do not quote it.) "
           "Under the broken protocol the measured gap decayed and reversed "
           "(+1.38 → +0.91 → −0.45 pp); under the corrected one it never crosses. "
           "**Same data, same seeds — the only difference was whether the cosine "

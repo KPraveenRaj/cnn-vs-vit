@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-24 19:05 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-24 19:33 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -113,7 +113,7 @@ Mid-project, the declared schedule turned out to be self-defeating: a 30-epoch c
 | ResNet-50 | 89.20 | 89.43 | 89.73 | 8 of 12 |
 | ViT-B/16 | 87.34 | 90.37 | 89.26 | 10 of 10 |
 
-It cost the transformer 2.7–3.0 pp and the CNN 0.2 — a 15× asymmetry. Under the broken protocol the measured gap decayed and reversed (+1.38 → +0.91 → −0.45 pp); under the corrected one it never crosses. **Same data, same seeds — the only difference was whether the cosine was allowed to finish.**
+Measured against the protocol actually adopted, it cost the transformer +1.92 pp and the CNN +0.54 pp — a 3.6x asymmetry. (Against the ViT's best annealed run it looks like 12.9x, but that compares to a schedule we did not adopt — do not quote it.) Under the broken protocol the measured gap decayed and reversed (+1.38 → +0.91 → −0.45 pp); under the corrected one it never crosses. **Same data, same seeds — the only difference was whether the cosine was allowed to finish.**
 
 Present this deliberately. It demonstrates that you understand the difference between an architectural result and a training artefact, and it is the honest answer to *"why does your protocol say 15 epochs?"*. The superseded runs are kept in `results/archive/ep30_truncated/` as evidence.
 

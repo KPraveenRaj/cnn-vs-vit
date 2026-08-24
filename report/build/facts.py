@@ -356,6 +356,32 @@ class Facts:
         out["ratio"] = out["resnet50"]["range"] / max(out["vit_b16"]["range"], 1e-9)
         return out
 
+    def schedule_asymmetry(self):
+        """What the truncation cost each model, against the protocol ACTUALLY adopted.
+
+        The tempting comparison is truncated-vs-best-annealed, which for the ViT is
+        the 8-epoch run and gives ~13x. But 8 epochs is not the protocol that was
+        adopted; 15 is. Measuring against the counterfactual you did not choose
+        inflates the number. Both are returned so the report can state the adopted
+        comparison and note the other.
+        """
+        sf = self.schedule_finding()
+        if not sf:
+            return None
+        out = {}
+        for key, label in (("annealed_15", "adopted"), ("annealed_8", "best_annealed")):
+            d = {}
+            for m in ("resnet50", "vit_b16"):
+                row = sf.get(m, {})
+                if not row.get("truncated") or not row.get(key):
+                    d = None
+                    break
+                d[m] = (row[key][0] - row["truncated"][0]) * 100
+            if d:
+                out[label] = {**d,
+                              "ratio": d["vit_b16"] / d["resnet50"] if d["resnet50"] else None}
+        return out or None
+
     def schedule_finding(self):
         """The schedule/early-stopping result, read from the runs that produced it.
 

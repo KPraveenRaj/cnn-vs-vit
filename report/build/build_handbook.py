@@ -333,10 +333,20 @@ Measured at f100, seed 0, same LR and same seed:
 | ResNet-50 | 89.20 | 89.43 | — | 89.73 | 8 of 12 |
 | ViT-B/16 | 87.34 | 90.37 | 90.04 | 89.26 | **10 of 10** |
 
-The truncation cost the transformer 2.7–3.0 pp and the CNN 0.2 — a **15×
-asymmetry**. Under the broken protocol the measured gap decayed with data and
-*reversed sign* (+1.38 → +0.91 → −0.45 pp). Under the corrected one it never
-crosses. Same data, same seeds.
+Measured against the protocol actually adopted (15 epochs, fully annealed), the
+truncation cost the transformer **@ASYM_VIT@ pp** and the CNN
+**@ASYM_RES@ pp** — a **@ASYM_RATIO@× asymmetry**.
+
+A note on how to quote that number, because it is easy to inflate. Comparing the
+truncated runs against the transformer's *best* annealed result — the 8-epoch
+schedule, where it reaches @BEST_VIT@% — gives a much larger
+@ASYM_RATIO_BEST@×. But 8 epochs is not the protocol that was adopted, and
+measuring a bug against a counterfactual you did not choose overstates it. The
+adopted comparison is the honest one.
+
+Under the broken protocol the measured gap decayed with data and *reversed sign*
+(+1.38 → +0.91 → −0.45 pp). Under the corrected one it never crosses. Same data,
+same seeds — and that consequence does not depend on which ratio you quote.
 
 **The tell was visible in the logs the whole time:** every ViT run early-stopped,
 and ViT's best epoch moved *earlier* as data grew (14–17 at f10, 3 at f100). That
@@ -442,9 +452,24 @@ def main():
         val=d["val"], test=d["test"],
         **_protocol(),
     )
+    _a = f.schedule_asymmetry() or {}
+    _ad = _a.get("adopted", {})
+    _bs = _a.get("best_annealed", {})
+    _sf = f.schedule_finding() or {}
+    # NOT str.format(): section 10.5 contains the literal run-ID template
+    # {model}_{dataset}_..., which format() would try to substitute.
+    pitfalls = PITFALLS
+    for token, value in (
+        ("@ASYM_VIT@", f"{_ad.get('vit_b16', float('nan')):+.2f}"),
+        ("@ASYM_RES@", f"{_ad.get('resnet50', float('nan')):+.2f}"),
+        ("@ASYM_RATIO@", f"{_ad.get('ratio', float('nan')):.1f}"),
+        ("@ASYM_RATIO_BEST@", f"{_bs.get('ratio', float('nan')):.1f}"),
+        ("@BEST_VIT@", f"{(_sf.get('vit_b16', {}).get('annealed_8') or [float('nan')])[0] * 100:.2f}"),
+    ):
+        pitfalls = pitfalls.replace(token, value)
     text = (handbook_part1.sections(f, ctx)
             + handbook_part2.sections(f, ctx)
-            + handbook_part3.sections(f, ctx, _results_section(f), PITFALLS,
+            + handbook_part3.sections(f, ctx, _results_section(f), pitfalls,
                                       *_compute_table()))
     out = REPO_ROOT / "HANDBOOK.md"
     out.write_text(text)

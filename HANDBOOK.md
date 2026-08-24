@@ -920,10 +920,20 @@ Measured at f100, seed 0, same LR and same seed:
 | ResNet-50 | 89.20 | 89.43 | — | 89.73 | 8 of 12 |
 | ViT-B/16 | 87.34 | 90.37 | 90.04 | 89.26 | **10 of 10** |
 
-The truncation cost the transformer 2.7–3.0 pp and the CNN 0.2 — a **15×
-asymmetry**. Under the broken protocol the measured gap decayed with data and
-*reversed sign* (+1.38 → +0.91 → −0.45 pp). Under the corrected one it never
-crosses. Same data, same seeds.
+Measured against the protocol actually adopted (15 epochs, fully annealed), the
+truncation cost the transformer **+1.92 pp** and the CNN
+**+0.54 pp** — a **3.6× asymmetry**.
+
+A note on how to quote that number, because it is easy to inflate. Comparing the
+truncated runs against the transformer's *best* annealed result — the 8-epoch
+schedule, where it reaches 90.37% — gives a much larger
+12.9×. But 8 epochs is not the protocol that was adopted, and
+measuring a bug against a counterfactual you did not choose overstates it. The
+adopted comparison is the honest one.
+
+Under the broken protocol the measured gap decayed with data and *reversed sign*
+(+1.38 → +0.91 → −0.45 pp). Under the corrected one it never crosses. Same data,
+same seeds — and that consequence does not depend on which ratio you quote.
 
 **The tell was visible in the logs the whole time:** every ViT run early-stopped,
 and ViT's best epoch moved *earlier* as data grew (14–17 at f10, 3 at f100). That
