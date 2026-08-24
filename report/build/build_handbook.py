@@ -18,6 +18,23 @@ from facts import Facts
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _compute_table():
+    """Measured training compute, straight from the ledger."""
+    import pandas as pd
+    p = REPO_ROOT / "results" / "tables" / "compute_ledger.csv"
+    if not p.exists():
+        return "*(compute ledger not present)*", "?"
+    d = pd.read_csv(p)
+    L = ["| dataset | regime | model | runs | GPU-hours | mean run |",
+         "|---|---|---|---|---|---|"]
+    for _, r in d.iterrows():
+        mins = r["mean_run_min"]
+        pretty = f"{mins*60:.0f} s" if mins < 1 else f"{mins:.0f} min"
+        L.append(f"| {r['dataset']} | {r['regime']} | {r['model_name']} | "
+                 f"{int(r['runs'])} | {r['gpu_hours']:.2f} | {pretty} |")
+    return "\n".join(L), f"{d['gpu_hours'].sum():.1f}"
+
+
 def _results_section(f):
     L = []
     A = L.append
@@ -217,7 +234,7 @@ def _results_section(f):
         A(f"| Peak train VRAM (MB) | {rd.get('peak_vram_mb',float('nan')):.0f} "
           f"| {vd.get('peak_vram_mb',float('nan')):.0f} | |")
         A("")
-    A(f"Total compute for the whole study: **{f.gpu_hours()} GPU-hours** on one "
+    A(f"Training compute for the whole study: **{f.gpu_hours()} GPU-hours** on one "
       f"RTX 4060 Laptop GPU (8 GB).")
     A("")
 
@@ -413,7 +430,8 @@ def main():
     )
     text = (handbook_part1.sections(f, ctx)
             + handbook_part2.sections(f, ctx)
-            + handbook_part3.sections(f, ctx, _results_section(f), PITFALLS))
+            + handbook_part3.sections(f, ctx, _results_section(f), PITFALLS,
+                                      *_compute_table()))
     out = REPO_ROOT / "HANDBOOK.md"
     out.write_text(text)
     words = len(text.split())

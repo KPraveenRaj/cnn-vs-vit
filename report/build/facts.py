@@ -208,9 +208,40 @@ class Facts:
         return {} if d.empty else d.iloc[0].to_dict()
 
     def gpu_hours(self):
+        """TRAINING compute only. The ledger is built from metrics.json wall times,
+        which cover training; the evaluation battery is not included. Use
+        gpu_hours_total() when the label says 'total'."""
         if self.ledger.empty:
             return PENDING
         return f"{self.ledger['gpu_hours'].sum():.1f}"
+
+    def gpu_hours_battery(self):
+        """Battery compute, from the per-pass timings recorded in eval_results.json."""
+        import json
+        total = 0.0
+        runs = REPO_ROOT / "results" / "runs"
+        if not runs.is_dir():
+            return None
+        for d in runs.iterdir():
+            p = d / "eval_results.json"
+            if not p.exists():
+                continue
+            try:
+                r = json.loads(p.read_text())
+            except Exception:
+                continue
+            secs = r.get("meta", {}).get("elapsed_seconds")
+            if secs:
+                total += secs / 3600.0
+        return total or None
+
+    def gpu_hours_total(self):
+        """Training plus battery, when the battery duration is recoverable."""
+        if self.ledger.empty:
+            return PENDING
+        train = self.ledger["gpu_hours"].sum()
+        batt = self.gpu_hours_battery()
+        return f"{train + batt:.1f}" if batt else f"{train:.1f}+"
 
     def dataset_facts(self):
         splits = REPO_ROOT / "data" / "splits" / "caltech256"

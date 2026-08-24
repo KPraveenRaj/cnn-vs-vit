@@ -1,6 +1,6 @@
 """Part 3 of HANDBOOK.md: codebase, reproduction, results, pitfalls, glossary."""
 
-def sections(f, d, res_tables, pitfalls):
+def sections(f, d, res_tables, pitfalls, compute_table, train_h):
     return f"""
 ---
 
@@ -8,7 +8,7 @@ def sections(f, d, res_tables, pitfalls):
 
 | decision | chosen | why not the alternative |
 |---|---|---|
-| ViT weights | `augreg_in1k` | the default `in21k_ft_in1k` is pre-trained on ~14× more data; using it would have handed the ViT the comparison |
+| ViT weights | `augreg_in1k` | the default `in21k_ft_in1k` is pre-trained on ~11× more data (14M vs 1.3M images); using it would have handed the ViT the comparison |
 | Per-model LR | yes, declared | one shared LR would cripple whichever family it suited less — their optima are a decade apart |
 | Heavy augmentation | excluded | mixup/CutMix/RandAugment interact with architecture; including them reintroduces the confound |
 | Fractions | nested, per class | independent draws would confound *quantity* with *which images* |
@@ -129,15 +129,17 @@ python report/build/build_submission_guide.py  # what to submit and when
 python report/build/build_handbook.py          # this file
 ```
 
-### 8.6 Expected compute
+### 8.6 Measured compute
 
-| block | time on an RTX 4060 Laptop (8 GB) |
-|---|---|
-| LR sweeps (both models, both regimes) | ~3 h |
-| Caltech-256 matrix, 24 runs | ~8.5 h |
-| Linear probes, 24 runs | ~5 min (features cached once) |
-| Evaluation battery, 24 checkpoints | ~4.5 h |
-| Food-101 block | ~5 h training + ~2.6 h battery |
+Actual times on an RTX 4060 Laptop (8 GB), from `results/tables/compute_ledger.csv`
+— these are what the runs took, not estimates:
+
+{compute_table}
+
+Training totals {train_h} GPU-hours. The evaluation battery adds roughly 4.5 h for
+the 24 Caltech-256 checkpoints (~7.7 min each) and about 2.6 h for the 6 Food-101
+checkpoints, whose test split is 3.4x larger. Linear probes are effectively free
+once features are cached: about 1.3 seconds per run.
 
 ---
 

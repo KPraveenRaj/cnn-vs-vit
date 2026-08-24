@@ -57,7 +57,7 @@ this file went stale twice when it was hand-written.*
 | Caltech-256 evaluation battery | **{c['caltech256'][1]}/24** checkpoints |
 | Food-101 full fine-tune | **{c['food101'][0]}** runs (f10, f25, f100 x 2 models) |
 | Food-101 evaluation battery | **{c['food101'][1]}** checkpoints |
-| Total compute | {f.gpu_hours()} GPU-hours |
+| Training compute | {f.gpu_hours()} GPU-hours (evaluation battery is extra) |
 
 ## Headline result
 

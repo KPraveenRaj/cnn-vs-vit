@@ -1,6 +1,6 @@
 # Project state
 
-*Generated 2026-08-24 18:58 by `report/build/build_status_docs.py`. Do not edit by hand —
+*Generated 2026-08-24 19:00 by `report/build/build_status_docs.py`. Do not edit by hand —
 this file went stale twice when it was hand-written.*
 
 ## Status: COMPLETE
@@ -12,7 +12,7 @@ this file went stale twice when it was hand-written.*
 | Caltech-256 evaluation battery | **24/24** checkpoints |
 | Food-101 full fine-tune | **6** runs (f10, f25, f100 x 2 models) |
 | Food-101 evaluation battery | **6** checkpoints |
-| Total compute | 15.2 GPU-hours |
+| Training compute | 15.2 GPU-hours (evaluation battery is extra) |
 
 ## Headline result
 
