@@ -1,5 +1,6 @@
 dataset=food101  classes=101  images=101000  master_seed=1234  ratios={'train': 0.7, 'val': 0.1, 'test': 0.2}
 totals: test=20200  val=10100  train_pool=70700
+train f10: s0=7070
 train f25: s0=17675
 train f100: s0=70700
 skipped non-image files (0): none

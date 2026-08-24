@@ -14,5 +14,12 @@ root: data/raw/food101/food-101/images
 num_classes: 101
 splits_dir: data/splits/food101
 split_ratios: {train: 0.70, val: 0.10, test: 0.20}
-fractions: [25, 100]
+fractions: [10, 25, 100]
+# ^ f10 added 2026-08-22. The contribution claim is about how the spectral
+#   robustness profile moves as the data budget shrinks, and on Caltech-256 the
+#   effect is 12x over f10->f100 but only 2.2x over f25->f100. Food-101 was
+#   originally run at {25, 100} only, so the wide-range claim was never actually
+#   tested there — and Food-101's f25 (17,675 images) is over 3x Caltech's f25
+#   (5,310), so it may already sit past the data-starved regime the effect lives
+#   in. f10 gives the matched wide-range comparison.
 seeds: [0]

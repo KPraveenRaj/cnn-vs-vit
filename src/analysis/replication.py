@@ -66,12 +66,34 @@ def _band_profile(dataset, model, frac):
     return (np.array(rows).mean(0), ks) if rows else (None, None)
 
 
-def _shift(dataset, model):
-    lo, ks = _band_profile(dataset, model, LO)
-    hi, _ = _band_profile(dataset, model, HI)
+def _shift(dataset, model, lo_frac=None, hi_frac=None):
+    """Largest absolute movement of the band profile between two fractions."""
+    lo_frac = LO if lo_frac is None else lo_frac
+    hi_frac = HI if hi_frac is None else hi_frac
+    lo, ks = _band_profile(dataset, model, lo_frac)
+    hi, _ = _band_profile(dataset, model, hi_frac)
     if lo is None or hi is None:
         return np.nan
     return float(np.abs(hi - lo).max())
+
+
+def _high_band_shift(dataset, model, lo_frac=None, hi_frac=None):
+    """Movement in the HIGHEST frequency band specifically.
+
+    max|shift| is a crude summary — a single noisy band can set it. The claim as
+    originally stated is narrower and more specific: that the CNN's robustness to
+    HIGH-frequency perturbation improves with data while the transformer's does
+    not. Testing the top band directly is faithful to that wording rather than a
+    post-hoc reframing, and it distinguishes 'the effect reversed' from 'neither
+    model moved', which max|shift| cannot.
+    """
+    lo_frac = LO if lo_frac is None else lo_frac
+    hi_frac = HI if hi_frac is None else hi_frac
+    lo, ks = _band_profile(dataset, model, lo_frac)
+    hi, _ = _band_profile(dataset, model, hi_frac)
+    if lo is None or hi is None:
+        return np.nan
+    return float((hi - lo)[-1])
 
 
 def main():
@@ -142,15 +164,35 @@ def main():
         f"{auc['food101'][1]:.3f} vs {auc['food101'][0]:.3f}" if f_ == f_ else "pending",
         _same_sign(c, f_))
 
-    # 6. THE CONTRIBUTION: whose spectral profile moves more with data? ------
-    sh = {ds: (_shift(ds, "resnet50"), _shift(ds, "vit_b16"))
+    # 6-7. THE CONTRIBUTION, tested two ways over the widest range each dataset has
+    for ds_lo in (LO,):
+        pass
+    ranges = {}
+    for ds in ("caltech256", "food101"):
+        lo = 10 if _band_profile(ds, "resnet50", 10)[0] is not None else LO
+        ranges[ds] = (lo, HI)
+
+    sh = {ds: (_shift(ds, "resnet50", *ranges[ds]), _shift(ds, "vit_b16", *ranges[ds]))
           for ds in ("caltech256", "food101")}
     c = sh["caltech256"][0] - sh["caltech256"][1]
     f_ = sh["food101"][0] - sh["food101"][1]
-    add(f"ResNet's spectral profile shifts MORE than ViT's ({LO}%->{HI}%)",
-        f"{sh['caltech256'][0]:.3f} vs {sh['caltech256'][1]:.3f}" if c == c else "—",
-        f"{sh['food101'][0]:.3f} vs {sh['food101'][1]:.3f}" if f_ == f_ else "pending",
-        _same_sign(c, f_), "THE CONTRIBUTION")
+    rc, rf = ranges["caltech256"], ranges["food101"]
+    add(f"ResNet's profile shifts MORE than ViT's (max over bands)",
+        f"{sh['caltech256'][0]:.3f} vs {sh['caltech256'][1]:.3f} (f{rc[0]}->f{rc[1]})"
+        if c == c else "—",
+        f"{sh['food101'][0]:.3f} vs {sh['food101'][1]:.3f} (f{rf[0]}->f{rf[1]})"
+        if f_ == f_ else "pending",
+        _same_sign(c, f_), "CONTRIBUTION (broad test)")
+
+    hb = {ds: (_high_band_shift(ds, "resnet50", *ranges[ds]),
+               _high_band_shift(ds, "vit_b16", *ranges[ds]))
+          for ds in ("caltech256", "food101")}
+    c2 = hb["caltech256"][0] - hb["caltech256"][1]
+    f2 = hb["food101"][0] - hb["food101"][1]
+    add("ResNet's HIGH-frequency robustness improves more with data than ViT's",
+        f"{hb['caltech256'][0]:+.3f} vs {hb['caltech256'][1]:+.3f}" if c2 == c2 else "—",
+        f"{hb['food101'][0]:+.3f} vs {hb['food101'][1]:+.3f}" if f2 == f2 else "pending",
+        _same_sign(c2, f2), "CONTRIBUTION (as stated)")
 
     df = pd.DataFrame(claims)
     df.to_csv(tables / "replication.csv", index=False)
@@ -169,6 +211,15 @@ def main():
     if done:
         n = sum(1 for c in done if c["agrees"])
         print(f"\n  {n} of {len(done)} testable claims replicate.")
+    print("\n  CAVEATS that must travel with this table:")
+    print("   - Food-101 runs ONE seed. Direction only; no significance can be claimed,")
+    print("     and a single noisy band can dominate a max-over-bands statistic.")
+    print("   - The fractions are not matched in ABSOLUTE size. Food-101's f25 is 17,675")
+    print("     images against Caltech's 5,310, and its f10 is 7,070 against 2,196 — so")
+    print("     'the same fraction' is a much larger dataset on Food-101, which may sit")
+    print("     past the data-starved regime the contribution is about.")
+    print("   - Disagreement indicates DATASET DEPENDENCE, not an error in the Caltech")
+    print("     measurement, which rests on its own frozen split and three seeds.")
     print(f"\n  -> {(tables / 'replication.csv').relative_to(REPO_ROOT)}")
 
 

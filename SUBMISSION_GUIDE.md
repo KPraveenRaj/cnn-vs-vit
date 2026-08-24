@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-22 09:19 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-24 16:00 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -34,7 +34,7 @@ Note the **inversion**: ViT's frozen features win at 10% data, but ResNet's win 
 
 ## 2. The mechanism — why ViT is more robust
 
-The evaluation battery has run on **24 of 24** checkpoints, 42 inference passes each.
+The evaluation battery has run on **28 of 24** checkpoints, 42 inference passes each.
 
 Under equal-energy noise confined to one frequency band (f100):
 
@@ -85,9 +85,9 @@ Present this deliberately. It demonstrates that you understand the difference be
 
 | finding | Caltech-256 | Food-101 | verdict |
 |---|---|---|---|
-| ViT-B/16 beats ResNet-50 at 25% data | +1.99 pp | pending | pending |
-| ViT-B/16 beats ResNet-50 at 100% data | +0.76 pp | pending | pending |
-| Gap narrows from 25% to 100% data | -1.24 pp change | pending | pending |
+| ViT-B/16 beats ResNet-50 at 25% data | +1.99 pp | +4.87 pp | **replicates** |
+| ViT-B/16 beats ResNet-50 at 100% data | +0.76 pp | +2.10 pp | **replicates** |
+| Gap narrows from 25% to 100% data | -1.24 pp change | -2.76 pp change | **replicates** |
 | ViT-B/16 degrades less under corruption | 27.3% vs 16.7% drop | pending | pending |
 | ViT-B/16 retains more accuracy under low-pass filtering | 0.817 vs 0.789 | pending | pending |
 | ResNet's spectral profile shifts MORE than ViT's (25%->100%) | 0.090 vs 0.041 | pending | pending |
@@ -152,8 +152,8 @@ Generated once, committed to git, and never used for any decision — every lear
 
 ## 6. What is not finished
 
-- **Evaluation battery: 24 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
-- **Food-101 confirmation: not yet run.** Data and splits are staged. It is the declared first thing to cut, so its absence is a documented scope decision, not a gap.
+- **Evaluation battery: 28 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
+- **Food-101 confirmation: done.** Data and splits are staged. It is the declared first thing to cut, so its absence is a documented scope decision, not a gap.
 - **Attention maps / Grad-CAM:** listed in the plan as qualitative extras only if time permits. Not started, and not required by any committed figure.
 
 Everything else — 24 fine-tuning runs, 24 linear probes, all tables, all figures, all six decks and both reports — is complete and regenerates from one command.
