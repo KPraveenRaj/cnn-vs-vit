@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-24 18:38 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-24 18:49 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -34,7 +34,7 @@ Note the **inversion**: ViT's frozen features win at 10% data, but ResNet's win 
 
 ## 2. The mechanism — why ViT is more robust
 
-The evaluation battery has run on **30 of 24** checkpoints, 42 inference passes each.
+The evaluation battery has run on **24 of 24** Caltech-256 checkpoints and **6 of 6** Food-101 checkpoints, 42 inference passes each.
 
 Under equal-energy noise confined to one frequency band (f100):
 
@@ -62,9 +62,9 @@ Change in relative retention per frequency band between 10% and 100% training da
 
 **⚠ Read the warning below before using this.** The numbers above are Caltech-256 only, and this specific claim did **not** reproduce on Food-101. The defensible version is in the box further down.
 
-**Why this matters:** it is a *mechanism* for the data-efficiency result, not a restatement of it. ViT's advantage is largest exactly where the CNN has least data from which to learn what the ViT already has. Three axes — accuracy, robustness, frequency — become one story.
+**Why this would matter — on Caltech-256:** it is a *mechanism* for the data-efficiency result, not a restatement of it. ViT's advantage is largest exactly where the CNN has least data from which to learn what the ViT already has. Three axes — accuracy, robustness, frequency — become one story. **On Food-101 that chain does not hold**, so present the mechanism as a Caltech-256 observation and the invariance contrast (below) as the cross-dataset claim.
 
-**How it differs from Park & Kim (2022),** which your guide will probably raise: they show the two families differ in frequency response at full scale and largely from scratch. You show that difference is *itself data-dependent* for one family and not the other — visible only under a protocol that varies the data budget while holding everything else fixed.
+**How it differs from Park & Kim (2022),** which your guide will probably raise: they show the two families differ in frequency response at full scale and largely from scratch. The extension here is that the difference is *itself contingent* — on the data budget (Caltech-256) and on the dataset (it vanishes on Food-101) — which is only visible under a protocol that varies the data budget while holding everything else fixed. Note also that they characterise what the *operations* do to feature maps, whereas this measures *input-frequency robustness*: related, not the same measurement.
 
 Figure: `results/figures/fig_frequency_shift.pdf`. Deck slide: "Frequency reliance × data fraction" in both review decks. Report: §6.4.
 
@@ -190,8 +190,11 @@ Generated once, committed to git, and never used for any decision — every lear
 
 ## 6. What is not finished
 
-- **Evaluation battery: 30 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
-- **Food-101 confirmation: done.** Data and splits are staged. It is the declared first thing to cut, so its absence is a documented scope decision, not a gap.
-- **Attention maps / Grad-CAM:** listed in the plan as qualitative extras only if time permits. Not started, and not required by any committed figure.
+**Nothing.** Every committed experiment is complete: Caltech-256 (24 fine-tuning runs, 24 linear probes, 24 batteries) and Food-101 (6 runs, 6 batteries).
 
-Everything else — 24 fine-tuning runs, 24 linear probes, all tables, all figures, all six decks and both reports — is complete and regenerates from one command.
+Two things are deliberately NOT done. Both are documented rather than missing, and saying so is stronger than leaving a gap:
+
+- **Qualitative saliency (attention maps / Grad-CAM).** Attempted and measured degenerate for ViT-B/16: attention rollout gives a uniform map (border-to-centre ratio 1.03) and Grad-CAM gives map standard deviation 0.0000, because Grad-CAM assumes non-negative activations that LayerNorm'd transformer tokens do not provide. Kept as a documented negative result in `src/analysis/attention_maps.py`, reproducible with `--diagnose`. No conclusion in the project depends on a saliency picture.
+- **Controlling the pre-training recipe.** Both checkpoints are ImageNet-1k, but they come from different training recipes, which the audit flags as a confound for the robustness result. Settling it would require pre-training both architectures from scratch under one recipe — far beyond a laptop GPU, and a natural Phase-II question.
+
+Everything is generated from one results table and rebuilds with one command per document.

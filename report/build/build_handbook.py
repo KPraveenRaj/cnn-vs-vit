@@ -108,12 +108,13 @@ def _results_section(f):
           f"frequency, band {r['max_band']}); ViT-B/16's barely moves "
           f"({v['max_abs']:.3f}). A **{ratio:.0f}× difference**.")
         A("")
-        A("**Interpretation.** The CNN must *learn* high-frequency robustness from the "
-          "fine-tuning data. The transformer inherits a flat profile from pre-training "
-          "and does not need downstream data to acquire it. That is a mechanism for "
-          "the data-efficiency result rather than a restatement of it: the "
-          "transformer's advantage is largest exactly where the CNN has least data "
-          "from which to learn what the transformer already has.")
+        A("**Interpretation — and read the two subsections that follow before using "
+          "it.** On Caltech-256 the CNN appears to *learn* high-frequency robustness "
+          "from the fine-tuning data, while the transformer inherits a flat profile "
+          "from pre-training. That would be a mechanism for the data-efficiency result "
+          "rather than a restatement of it. **However, this did not reproduce on "
+          "Food-101**, so the statement above is Caltech-specific; the claim that "
+          "survives both datasets is in the second subsection below.")
         A("")
         A("**How this differs from prior work.** Park & Kim (2022) establish that the "
           "two families differ in frequency response, at full scale. What is new here "

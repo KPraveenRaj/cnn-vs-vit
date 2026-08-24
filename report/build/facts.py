@@ -59,10 +59,24 @@ class Facts:
         d = self.master if regime is None else self.master[self.master["regime"] == regime]
         return len(d)
 
-    def battery_done(self):
+    def battery_done(self, dataset=None):
+        """Checkpoints with a completed battery. Scope to one dataset by default-free
+        argument — the totals differ per dataset, and mixing them produced a
+        '30 of 24' in an earlier draft of the submission guide."""
         if self.master.empty or "corr_mean_top1" not in self.master.columns:
             return 0
-        return int(self.master["corr_mean_top1"].notna().sum())
+        d = self.master
+        if dataset is not None:
+            d = d[d["dataset"] == dataset]
+        return int(d["corr_mean_top1"].notna().sum())
+
+    def battery_total(self, dataset="caltech256"):
+        """How many fullft checkpoints exist for that dataset."""
+        if self.master.empty:
+            return 0
+        d = self.master[(self.master["dataset"] == dataset)
+                        & (self.master["regime"] == "fullft")]
+        return int(len(d))
 
     def available(self):
         """What genuinely exists right now -- drives which claims a deck may make."""

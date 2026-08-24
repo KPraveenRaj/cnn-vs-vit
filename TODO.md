@@ -1,63 +1,30 @@
-# What's left
+# What is left
 
-*Written 2026-08-22 09:25. The Caltech-256 study — the whole thesis — is
-complete. Everything below is either the Food-101 confirmation block or
-housekeeping.*
+*Generated 2026-08-24 18:47 by `report/build/build_status_docs.py`.*
 
-## Queued and unattended (resume with one command)
+## Experiments: all complete
 
-```bash
-bash scripts/run_rest_after_matrix.sh    # finishes Food-101 training
-bash scripts/run_food101_battery.sh      # then the battery + full refresh
-```
-
-Both skip completed work, so re-running costs only what genuinely remains.
-
-| # | task | time | notes |
-|---|---|---|---|
-| 1 | Food-101 `resnet50 f25` | ~25 min | 17,675 train images |
-| 2 | Food-101 `vit_b16 f25` | ~60 min | |
-| 3 | Battery on 4 Food-101 checkpoints | ~155 min | test split is 20,200 images, 3.4x Caltech's |
-| 4 | `src.analysis.replication` + regenerate all documents | ~10 min | the pipeline does this automatically |
-
-**Total: ~4 h of unattended GPU time.**
-
-`resnet50 f100` and `vit_b16 f100` are already done.
-
-## Then: read the replication verdict
-
-`python -m src.analysis.replication` prints one row per Caltech finding and
-whether Food-101 points the same way. Also written to
-`results/tables/replication.csv` and into the end-semester report (8.1) and
-`SUBMISSION_GUIDE.md` (3b).
-
-Remember the two cautions that travel with it: Food-101 is **one seed** by
-design, so direction only, never significance; and disagreement would mean the
-finding is *dataset-dependent*, not that the Caltech measurement was wrong.
+Nothing outstanding. Caltech-256 is 24/24 runs,
+24/24 probes and 24/24 batteries; Food-101 is
+6 runs and 6 batteries.
 
 ## Housekeeping
 
-- [ ] **Back up to the external HDD.** CLAUDE.md asks for this weekly and it has
-      never been done — the drive was not mounted at any point in these sessions.
-      Plug it in and copy `results/` (including the 4.3 GB of archived ep30
-      checkpoints, which are local-only) and `report/`.
-- [ ] **Back up tables + report to Google Drive**, also per CLAUDE.md.
-- [ ] **Send `progress_01_resumption.pptx` to Dr. Bini.** It is ready and honest
-      about the pause. `report/weekly_notes/week_07.md` is a drafted written note
-      covering the same ground if you would rather send prose.
-- [x] ~~Freeze `requirements.txt`~~ — done 2026-08-22, pinned to the exact
-      versions that produced the results.
+- **Back up to the external HDD.** CLAUDE.md asks weekly; it has never been done because the drive was not mounted in any session. `results/archive/ep30_truncated/checkpoints/` (4.3 GB) exists ONLY on this machine — everything else is on GitHub.
+- **Back up tables and report to Google Drive**, also per CLAUDE.md.
+- **Send a progress deck to Dr. Bini.** `progress_01_resumption.pptx` is ready, or `report/weekly_notes/week_07.md` if prose suits better.
+- [x] ~~Freeze `requirements.txt`~~ — done, pinned to the versions that produced
+  the results.
+- [x] ~~Qualitative saliency~~ — attempted, measured degenerate for ViT-B/16, and
+  documented as a negative result in `src/analysis/attention_maps.py`. Not reported.
 
-## Optional, explicitly "only if time permits" in the plan
+## Open questions for Phase II
 
-- [ ] **Attention maps / Grad-CAM.** Qualitative only. No committed figure needs
-      them, and the mechanism story is already carried quantitatively by the
-      frequency probes. Lowest value of anything remaining.
-- [ ] **A third seed for Food-101**, if you ever want significance there rather
-      than direction. Roughly 5 GPU-h per extra seed.
-
-## Not for this phase
-
-- Phase II (EC790): generative / restoration-oriented vision transformers. The
-  frequency machinery built here transfers directly — restoration is explicitly
-  a frequency problem and the tooling is already validated.
+- **Does the invariance claim hold on a third dataset?** The narrow contribution
+  held on Caltech-256 and not on Food-101; the rescoped version (ViT's spectral
+  robustness invariant, ResNet's contingent) holds across every condition measured
+  here but was formed after seeing both datasets.
+- **Controlling the pre-training recipe.** Both checkpoints are ImageNet-1k but
+  come from different training recipes, which the audit identifies as a confound
+  for the robustness result. Settling it needs both architectures pre-trained from
+  scratch under one recipe.

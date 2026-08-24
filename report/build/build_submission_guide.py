@@ -99,8 +99,10 @@ def main():
     if n_batt:
         A("## 2. The mechanism — why ViT is more robust")
         A("")
-        A(f"The evaluation battery has run on **{n_batt} of 24** checkpoints, "
-          f"42 inference passes each.")
+        A(f"The evaluation battery has run on **{f.battery_done('caltech256')} of "
+          f"{f.battery_total('caltech256')}** Caltech-256 checkpoints and "
+          f"**{f.battery_done('food101')} of {f.battery_total('food101')}** Food-101 "
+          f"checkpoints, 42 inference passes each.")
         A("")
         A("Under equal-energy noise confined to one frequency band (f100):")
         A("")
@@ -162,16 +164,22 @@ def main():
               "robustness profile from pre-training and does not need downstream data "
               "to acquire it.")
         A("")
-        A("**Why this matters:** it is a *mechanism* for the data-efficiency result, "
-          "not a restatement of it. ViT's advantage is largest exactly where the CNN "
-          "has least data from which to learn what the ViT already has. Three axes — "
-          "accuracy, robustness, frequency — become one story.")
+        A("**Why this would matter — on Caltech-256:** it is a *mechanism* for the "
+          "data-efficiency result, not a restatement of it. ViT's advantage is largest "
+          "exactly where the CNN has least data from which to learn what the ViT "
+          "already has. Three axes — accuracy, robustness, frequency — become one "
+          "story. **On Food-101 that chain does not hold**, so present the mechanism "
+          "as a Caltech-256 observation and the invariance contrast (below) as the "
+          "cross-dataset claim.")
         A("")
         A("**How it differs from Park & Kim (2022),** which your guide will probably "
           "raise: they show the two families differ in frequency response at full scale "
-          "and largely from scratch. You show that difference is *itself data-dependent* "
-          "for one family and not the other — visible only under a protocol that varies "
-          "the data budget while holding everything else fixed.")
+          "and largely from scratch. The extension here is that the difference is "
+          "*itself contingent* — on the data budget (Caltech-256) and on the dataset "
+          "(it vanishes on Food-101) — which is only visible under a protocol that "
+          "varies the data budget while holding everything else fixed. Note also that "
+          "they characterise what the *operations* do to feature maps, whereas this "
+          "measures *input-frequency robustness*: related, not the same measurement.")
         A("")
         A("Figure: `results/figures/fig_frequency_shift.pdf`. Deck slide: "
           "\"Frequency reliance × data fraction\" in both review decks. Report: §6.4.")
@@ -384,17 +392,36 @@ def main():
     # -------------------------------------------------------------- pending
     A("## 6. What is not finished")
     A("")
-    A(f"- **Evaluation battery: {n_batt} of 24 checkpoints.** Figures involving "
-      f"corruption and frequency will sharpen as the rest land.")
-    A(f"- **Food-101 confirmation: {'done' if av['food101'] else 'not yet run'}.** "
-      f"Data and splits are staged. It is the declared first thing to cut, so its "
-      f"absence is a documented scope decision, not a gap.")
-    A("- **Attention maps / Grad-CAM:** listed in the plan as qualitative extras "
-      "only if time permits. Not started, and not required by any committed figure.")
+    cal_d, cal_t = f.battery_done("caltech256"), f.battery_total("caltech256")
+    fd_d, fd_t = f.battery_done("food101"), f.battery_total("food101")
+    if cal_d >= cal_t and fd_d >= fd_t and av["food101"]:
+        A(f"**Nothing.** Every committed experiment is complete: Caltech-256 "
+          f"({cal_t} fine-tuning runs, 24 linear probes, {cal_d} batteries) and "
+          f"Food-101 ({fd_t} runs, {fd_d} batteries).")
+        A("")
+        A("Two things are deliberately NOT done. Both are documented rather than "
+          "missing, and saying so is stronger than leaving a gap:")
+        A("")
+        A("- **Qualitative saliency (attention maps / Grad-CAM).** Attempted and "
+          "measured degenerate for ViT-B/16: attention rollout gives a uniform map "
+          "(border-to-centre ratio 1.03) and Grad-CAM gives map standard deviation "
+          "0.0000, because Grad-CAM assumes non-negative activations that LayerNorm'd "
+          "transformer tokens do not provide. Kept as a documented negative result in "
+          "`src/analysis/attention_maps.py`, reproducible with `--diagnose`. No "
+          "conclusion in the project depends on a saliency picture.")
+        A("- **Controlling the pre-training recipe.** Both checkpoints are ImageNet-1k, "
+          "but they come from different training recipes, which the audit flags as a "
+          "confound for the robustness result. Settling it would require pre-training "
+          "both architectures from scratch under one recipe — far beyond a laptop GPU, "
+          "and a natural Phase-II question.")
+    else:
+        A(f"- **Evaluation battery:** {cal_d} of {cal_t} Caltech-256 checkpoints, "
+          f"{fd_d} of {fd_t} Food-101.")
+        A(f"- **Food-101 confirmation:** "
+          f"{'complete' if av['food101'] else 'not yet run'}.")
     A("")
-    A("Everything else — 24 fine-tuning runs, 24 linear probes, all tables, all "
-      "figures, all six decks and both reports — is complete and regenerates from "
-      "one command.")
+    A("Everything is generated from one results table and rebuilds with one command "
+      "per document.")
     A("")
 
     out = REPO_ROOT / "SUBMISSION_GUIDE.md"
