@@ -792,7 +792,7 @@ ResNet-50's profile moves by 0.263 (concentrated at high frequency, band 88-159)
 |---|---|---|
 | ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.061 vs 0.110 (f10->f100) |
 | ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.011 vs +0.019 |
-| ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x range) | ViT 0.961-0.987 (1.03x range) |
+| ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x, both datasets) | ViT 0.961-0.987 (1.03x, both datasets) |
 
 Stated plainly because it bounds how far the claim can be taken. Three qualifications separate what was measured from what can be concluded:
 
@@ -850,7 +850,7 @@ Training compute for the whole study: **15.2 GPU-hours** on one RTX 4060 Laptop 
 | ViT-B/16 retains more accuracy under low-pass filtering | 0.817 vs 0.789 | 0.765 vs 0.686 | **replicates** |
 | ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.061 vs 0.110 (f10->f100) | **differs** |
 | ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.011 vs +0.019 | **differs** |
-| ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x range) | ViT 0.961-0.987 (1.03x range) | **replicates** |
+| ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x, both datasets) | ViT 0.961-0.987 (1.03x, both datasets) | **replicates** |
 
 Two cautions. Food-101 runs **one seed** by design, so it supports statements about direction, not significance. And a finding that holds on one dataset and not the other indicates *dataset dependence*, not an error in the first measurement — the Caltech result rests on its own internal validity (frozen split, three seeds, one protocol).
 

@@ -218,8 +218,10 @@ def main():
         claims.append({
             "claim": "ViT's high-frequency robustness is INVARIANT across dataset and "
                      "data budget; ResNet's is contingent",
-            "caltech256": f"ResNet {r[0]:.3f}-{r[1]:.3f} ({r[2]:.1f}x range)",
-            "food101": f"ViT {v[0]:.3f}-{v[1]:.3f} ({v[2]:.2f}x range)",
+            # This row spans BOTH datasets, so the per-dataset column headers do
+            # not apply to it. Label the cells so they cannot be misread.
+            "caltech256": f"ResNet {r[0]:.3f}-{r[1]:.3f} ({r[2]:.1f}x, both datasets)",
+            "food101": f"ViT {v[0]:.3f}-{v[1]:.3f} ({v[2]:.2f}x, both datasets)",
             "agrees": bool(r[2] > v[2] * 2),
             "note": "BROADER CLAIM — formed after seeing both datasets, "
                     "spans all conditions",

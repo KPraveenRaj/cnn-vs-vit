@@ -546,12 +546,22 @@ def build(final: bool):
     if final:
         h1(doc, "8. Cross-dataset confirmation: Food-101")
         if f.available()["food101"]:
-            rows = [[n, f.top1_str(m, 25, dataset="food101"),
-                     f.top1_str(m, 100, dataset="food101")]
+            fr_avail = [fr for fr in (10, 25, 50, 100)
+                        if f.top1("resnet50", fr, dataset="food101")]
+            rows = [[n] + [f.top1_str(m, fr, dataset="food101") for fr in fr_avail]
                     for m, n in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16"))]
-            table(doc, ["Model", "25% data", "100% data"], rows,
-                  f"Table {tno}: Food-101 confirmation, single seed, full fine-tuning.",
-                  widths=[1.6, 1.5, 1.5])
+            gaps = ["Gap (ViT - ResNet)"]
+            for fr in fr_avail:
+                a = f.top1("vit_b16", fr, dataset="food101")
+                b = f.top1("resnet50", fr, dataset="food101")
+                gaps.append(f"{(a[0]-b[0])*100:+.2f} pp")
+            rows.append(gaps)
+            table(doc, ["Model"] + [f"{fr}% data" for fr in fr_avail], rows,
+                  f"Table {tno}: Food-101 confirmation, single seed, full fine-tuning. "
+                  f"The f10 cell was added after the initial block so that the "
+                  f"spectral-profile claim could be tested over the same wide data "
+                  f"range in which it was found on Caltech-256.",
+                  widths=[1.5] + [1.1] * len(fr_avail))
             tno += 1
         else:
             para(doc, "Food-101 was designated in the project plan as the first item to "
@@ -575,9 +585,10 @@ def build(final: bool):
                              str(r["food101"]), verdict[a]])
             table(doc, ["Finding", "Caltech-256", "Food-101", "Verdict"], rows,
                   f"Table {tno}: Each Caltech-256 finding re-tested on Food-101. "
-                  f"Comparisons are matched to the fractions Food-101 has (25% and "
-                  f"100%), including the spectral-profile shift, which is therefore "
-                  f"computed over a narrower data range than the headline figure.",
+                  f"Comparisons are matched to the fractions each dataset has; the "
+                  f"spectral-profile shift is computed over the widest range available "
+                  f"on both, and the final row spans every dataset and fraction rather "
+                  f"than the two columns above it.",
                   widths=[2.2, 1.4, 1.4, 0.9])
             tno += 1
         para(doc, "Two cautions belong with this table. Food-101 runs a single seed "

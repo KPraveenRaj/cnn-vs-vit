@@ -675,24 +675,28 @@ Now the right panel, the transformer. The two lines are almost indistinguishable
 Whether it saw ten percent or one hundred percent of the data, its robustness
 profile is essentially the same.
 
-Quantitatively, the CNN's profile moves about twelve times as much as the
-transformer's.
+Quantitatively, on Caltech-256 the CNN's profile moves about twelve times as much
+as the transformer's.
 
-Here is the interpretation, and it is the sentence to land. The convolutional
-network has to LEARN robustness to fine-detail interference from the fine-tuning
-data. The transformer already has it, from pre-training, and does not need your
-data to acquire it. Which explains the very first result: the transformer's
-advantage is largest exactly where the CNN has least data from which to learn the
-thing the transformer already possesses.
+Here is the interpretation. On this dataset the convolutional network appears to
+LEARN robustness to fine-detail interference from the fine-tuning data, while the
+transformer already has it from pre-training. That would explain the very first
+result: the transformer's advantage is largest exactly where the CNN has least
+data from which to learn what the transformer already possesses.
 
-That ties all three results into a single account, and it is the reason this is a
-characterisation rather than a leaderboard.
+NOW SAY THE IMPORTANT PART, DO NOT SKIP IT. This did not reproduce on Food-101.
+On that dataset the CNN's high-frequency robustness does not improve with data at
+all — it stays near a tenth of its clean accuracy at every budget. So the claim as
+just stated is specific to Caltech-256, and the next slide gives the version that
+survives both datasets. Volunteering that is much stronger than being caught by
+it, and an examiner who knows the field will ask.
 
 If asked how this differs from prior work: existing research established that the
-two families differ in frequency response, but at full scale. What is new here is
-that the difference is itself data-dependent for one family and not the other —
-which only becomes visible if you deliberately vary the data budget while holding
-everything else fixed, which is what this protocol does.
+two families differ in frequency response, but at full scale. The extension here
+is that the difference is itself contingent — on the data budget on Caltech-256,
+and on the dataset, since it vanishes on Food-101. Note also that prior work
+characterises what the operations do to feature maps, whereas this measures
+input-frequency robustness. Related, not the same measurement.
 """)
     return s
 
@@ -917,11 +921,13 @@ actually suffer.
 Point three explains point two: the CNN has an identifiable weak spot at coarse
 spatial frequencies, and the transformer does not.
 
-Point four is the new part. That weak spot is not fixed — the CNN's robustness
-profile changes substantially depending on how much fine-tuning data it received,
-while the transformer's does not change at all. So the CNN has to learn from your
-data something the transformer brought with it. That single sentence explains point
-one.
+Point four is the new part, and it needs stating carefully. On Caltech-256 the
+CNN's robustness profile changes substantially with how much fine-tuning data it
+received, while the transformer's does not. That did NOT reproduce on Food-101,
+so do not present it as general. What holds across both datasets is the weaker but
+sturdier version: the transformer's spectral robustness is invariant to task and
+data budget, and the CNN's is contingent on both — on Food-101 it never becomes
+robust at any budget.
 
 Point five is the honest counterweight: all of this costs about four times the
 computation, so the engineering answer depends on the deployment target.
