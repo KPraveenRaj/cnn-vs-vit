@@ -173,3 +173,67 @@ def save(prs, path):
     prs.save(str(path))
     n = len(prs.slides.__iter__.__self__._sldIdLst)
     print(f"  {Path(path).name}  ({n} slides)")
+
+
+def notes(slide_, text):
+    """Attach speaker notes — the script for what to SAY on this slide.
+
+    These carry most of the accessibility burden. The slide itself stays sparse
+    enough to project; the notes explain every term the first time it appears and
+    give a plain-language reading of each number, so the deck can be presented to
+    an audience with no machine-learning background without the presenter having
+    to improvise the explanation.
+    """
+    tf = slide_.notes_slide.notes_text_frame
+    first = True
+    for para_text in [t.strip() for t in text.strip().split("\n\n") if t.strip()]:
+        p = tf.paragraphs[0] if first else tf.add_paragraph()
+        first = False
+        p.text = para_text
+        p.font.size = Pt(12)
+    return slide_
+
+
+def plain(slide_, text, top=Inches(5.55), height=Inches(1.05)):
+    """A 'in plain terms' box: the same claim, stripped of jargon.
+
+    Sits on the slide itself rather than in the notes, because a non-expert in
+    the room needs it visible while they look at the figure, not afterwards.
+    """
+    box = slide_.shapes.add_shape(5, M, top, CONTENT_W, height)
+    box.fill.solid()
+    box.fill.fore_color.rgb = RGBColor(0xFF, 0xF6, 0xE8)
+    box.line.color.rgb = RGBColor(0xE8, 0xC9, 0x9A)
+    box.shadow.inherit = False
+    tf = box.text_frame
+    tf.word_wrap = True
+    tf.margin_left = tf.margin_right = Inches(0.18)
+    tf.margin_top = Inches(0.08)
+    p = tf.paragraphs[0]
+    p.text = "In plain terms"
+    p.font.size, p.font.bold, p.font.color.rgb = Pt(11), True, RGBColor(0x9A, 0x6B, 0x1E)
+    p2 = tf.add_paragraph()
+    p2.text = text
+    p2.font.size, p2.font.color.rgb = Pt(13.5), BODY
+    return box
+
+
+def two_col(slide_, left_items, right_items, top=Inches(1.62), size=15,
+            height=Inches(4.6)):
+    """Two bullet columns — for side-by-side comparisons like CNN vs ViT."""
+    w = int((CONTENT_W - Inches(0.4)) / 2)
+    a = bullets(slide_, left_items, top=top, left=M, width=w, size=size, height=height)
+    b = bullets(slide_, right_items, top=top, left=M + w + Inches(0.4), width=w,
+                size=size, height=height)
+    return a, b
+
+
+def col_header(slide_, text, left_half=True, top=Inches(1.28), color=None):
+    w = int((CONTENT_W - Inches(0.4)) / 2)
+    left = M if left_half else M + w + Inches(0.4)
+    tf = _tb(slide_, left, top, w, Inches(0.34))
+    p = tf.paragraphs[0]
+    p.text = text
+    p.font.size, p.font.bold = Pt(15), True
+    p.font.color.rgb = color or ACCENT
+    return tf

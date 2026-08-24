@@ -2,24 +2,42 @@
 
   progress_01..04   short updates for the guide, sent one at a time as the
                     corresponding milestone is genuinely reached
-  midsem_review     the mid-semester presentation (nearly the whole story)
+  midsem_review     the mid-semester presentation
   endsem_review     the end-semester presentation (+ Food-101, + Phase-II)
+
+Written for a MIXED audience. The project supervisor knows the field; a panel,
+an external examiner from an adjacent area, or a family member asking what the
+work is about does not. Three devices carry that:
+
+  * explainer slides come BEFORE results, building the vocabulary each result
+    needs (what a CNN and a ViT actually are, what transfer learning is, what
+    "spatial frequency" means for a photograph) and leaning on the qualitative
+    figures, because a picture of a low-pass-filtered image explains the idea
+    faster than any definition;
+  * every slide carries SPEAKER NOTES — a script that expands each term on
+    first use and reads each number aloud in plain language, so the deck can be
+    presented without improvising the explanation;
+  * result slides carry an "in plain terms" box on the slide itself, because
+    someone looking at the figure needs the translation next to it.
 
 Every number comes from report/build/facts.py, which reads results/tables only.
 Where a result does not exist yet the deck says "(pending)" rather than
-inventing a plausible value, so a deck built mid-matrix is honest about what is
-finished. Re-run after more results land and every slide updates.
+inventing a plausible value. Re-run after more results land and every slide
+updates.
 
-The progress decks are deliberately UNDATED. They describe milestones, not
-calendar days: send each one when its milestone is actually true.
+The progress decks are deliberately UNDATED: they describe milestones, not
+calendar days. Send each one when its milestone is actually true.
 """
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from deckkit import (ACCENT, GOOD, RESNET, VIT, bullets, caption, new_deck,
-                     picture, save, slide, table, takeaway, title_slide)
+from pptx.util import Inches as I
+
+from deckkit import (ACCENT, GOOD, RESNET, VIT, bullets, caption, col_header,
+                     new_deck, notes, picture, plain, save, slide, table,
+                     takeaway, title_slide, two_col)
 from facts import Facts
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -37,208 +55,978 @@ PROBLEM = ("Vision Transformers now lead image-classification benchmarks, but th
            "controlled transfer-learning protocol and compares how the two families "
            "behave.")
 
-CONTROLLED = ("identical pre-training source (ImageNet-1k), data splits, augmentation, "
-              "resolution (224), schedule shape, optimizer family, seeds and evaluation "
-              "— with a small documented per-model learning-rate sweep.")
+
+# ==========================================================================
+# Explainer slides — vocabulary, before any result depends on it
+# ==========================================================================
+def sl_question(prs, f):
+    s = slide(prs, "The question, in one sentence", kicker="1 · What this is about")
+    bullets(s, [
+        (0, "When you fine-tune a pre-trained image model on a new task, does a "
+            "Vision Transformer or a convolutional network give you more — and WHY?", True),
+        (0, "Two things make this hard to answer from the literature:", False),
+        (1, "published comparisons usually change several things at once — the "
+            "pre-training data, the augmentation recipe, the training length — so an "
+            "'architecture' conclusion is not actually about architecture", False),
+        (1, "most of them report only which model scores higher, not what the two "
+            "models are doing differently", False),
+        (0, "So: hold EVERYTHING fixed except the architecture, and measure behaviour, "
+            "not just the score.", True),
+    ])
+    plain(s, "Two well-known families of image recognisers are compared as fairly as "
+             "possible, and we try to explain the difference rather than just report it.")
+    notes(s, """
+Open with the everyday version of the problem. Somebody hands you a model that has
+already been trained on millions of general photographs. You want it to do YOUR
+task, and you only have a few thousand pictures. Which kind of model should you
+pick, and what are you actually buying?
+
+The honest answer from the literature is muddy, because published comparisons
+usually differ in several ways at once. If model A saw more pre-training data than
+model B, and also trained for longer, and also used a fancier data-augmentation
+recipe, then "A beats B" tells you nothing about A's architecture.
+
+So the design principle of this project is: change one thing. Everything else —
+the data, the split, the augmentation, the schedule shape, the random seeds, the
+evaluation — is identical. Then whatever difference remains is attributable to the
+architecture itself.
+
+The second half matters as much as the first. We are not just asking who wins; we
+are asking what each model depends on, which is what lets you predict how they
+will behave on data you have not tested yet.
+""")
+    return s
 
 
+def sl_two_models(prs, f):
+    s = slide(prs, "The two contenders", kicker="2 · Background")
+    col_header(s, "ResNet-50 — a convolutional network (CNN)", True, color=RESNET)
+    col_header(s, "ViT-B/16 — a Vision Transformer", False, color=VIT)
+    two_col(s, [
+        (0, "Scans the image with small sliding filters.", False),
+        (0, "Built-in assumption: nearby pixels belong together, and the same pattern "
+            "means the same thing wherever it appears.", False),
+        (0, "That assumption is free knowledge — it makes CNNs efficient learners on "
+            "images.", False),
+        (0, "Design dates from the 1980s-2010s; the mature, default choice.", False),
+    ], [
+        (0, "Cuts the image into a grid of 16x16 patches and treats them like words in "
+            "a sentence.", False),
+        (0, "Every patch can look at every other patch directly — 'attention'.", False),
+        (0, "Almost no built-in assumption about images, so it must learn more from "
+            "data — but is freer to learn whatever helps.", False),
+        (0, "Adapted from language models in 2020.", False),
+    ], size=14)
+    rd, vd = f.deployment_row("resnet50"), f.deployment_row("vit_b16")
+    if rd and vd:
+        table(s, ["", "ResNet-50", "ViT-B/16"],
+              [["Parameters", f"{rd.get('params_m',0):.0f} M", f"{vd.get('params_m',0):.0f} M"],
+               ["Compute per image", f"{rd.get('gmacs',0):.1f} GMACs",
+                f"{vd.get('gmacs',0):.1f} GMACs"]],
+              top=I(5.35), col_w=[1.6, 1, 1], size=12)
+    notes(s, """
+These are the two archetypes. Pick the words carefully here, because everything
+later depends on the audience having this picture.
+
+A convolutional network — ResNet-50 — looks at an image through a small window
+that slides across it, hunting for local patterns: edges, then textures, then
+parts, then objects. It is built with an assumption baked in, that nearby pixels
+are related and that a pattern means the same thing wherever it appears. That
+assumption is a gift: it means the network does not have to learn from scratch
+that images are spatially structured.
+
+A Vision Transformer — ViT-B/16 — does something stranger. It chops the picture
+into a grid of small square patches, sixteen pixels on a side, and then treats
+that as a sequence, rather like words in a sentence. Its core operation,
+attention, lets any patch consult any other patch directly, so a patch in one
+corner can be compared to a patch in the opposite corner in a single step. It
+carries almost no built-in assumption about images, which means it has more to
+learn — but also that it is less constrained in what it can learn.
+
+Note the size difference: the ViT has roughly three and a half times the
+parameters and needs about four times the arithmetic per image. Any advantage it
+shows has to be weighed against that.
+""")
+    return s
+
+
+def sl_transfer(prs, f):
+    s = slide(prs, "Transfer learning — and why the data budget is the interesting knob",
+              kicker="3 · Background")
+    bullets(s, [
+        (0, "Nobody trains these models from scratch. Both start from weights learned "
+            "on ImageNet — about 1.3 million general photographs.", True),
+        (0, "Fine-tuning = continue training that already-knowledgeable model on your "
+            "smaller, specific dataset.", False),
+        (0, "This is how essentially all applied computer vision works, because almost "
+            "nobody has a million labelled images of their own problem.", False),
+        (0, "So the practical question is not 'which model is best with unlimited "
+            "data?' but 'which model gives me more when I have only a little?'", True),
+        (0, "We therefore train at 10%, 25%, 50% and 100% of the available data and "
+            "watch how the answer changes.", False),
+        (1, "Both models are pre-trained on the SAME ImageNet-1k images — a control "
+            "that is easy to get wrong and that many published comparisons miss.", False),
+    ])
+    plain(s, "Both models start out already knowing a lot about photographs in general. "
+             "We test how well each one uses a small amount of new, specific data.")
+    notes(s, """
+This slide explains the setting, and it is the one non-experts most often miss.
+
+Nobody in practice trains a large image model from nothing. It takes enormous data
+and compute. Instead you download a model that has already been trained on
+ImageNet — roughly 1.3 million everyday photographs across a thousand categories —
+and then continue training it briefly on your own, much smaller dataset. That
+second step is called fine-tuning, and the whole approach is transfer learning:
+knowledge transfers from the general task to your specific one.
+
+Because that is how applied vision actually works, the interesting question is not
+who wins with unlimited data. It is who gives you more when you have very little,
+because having very little is the normal condition.
+
+So we deliberately starve both models. We train them on ten percent of the data,
+then twenty-five, then fifty, then all of it, and watch how the gap between them
+behaves.
+
+One control worth flagging out loud: both models start from ImageNet-1k, the same
+1.3 million images. The most popular downloadable ViT weights are actually trained
+on a much larger set, ImageNet-21k. Using those would have handed the transformer
+a fourteen-times-larger head start and quietly invalidated the whole comparison.
+We pinned the ImageNet-1k version instead.
+""")
+    return s
+
+
+def sl_controlled(prs, f):
+    d = f.dataset_facts()
+    s = slide(prs, "What “a controlled comparison” actually requires", kicker="4 · Method")
+    bullets(s, [
+        (0, "Identical for both models — pre-training source, data splits, "
+            "augmentation, image size (224x224), schedule shape, optimiser family, "
+            "random seeds, and the entire evaluation path.", True),
+        (0, "ONE declared exception: each model gets its own learning rate, chosen by a "
+            "documented search.", False),
+        (1, f"ResNet-50 → {f.lr_selected('resnet50')}    ViT-B/16 → {f.lr_selected('vit_b16')}", False),
+        (1, "The learning rate controls how big a step the model takes when it corrects "
+            "itself. The two families want values a whole decade apart — forcing one "
+            "value on both would cripple one of them, which is the opposite of fair.", False),
+        (0, f"Data: Caltech-256 — {d['total']:,} photographs, {d['classes']} categories, "
+            f"split once into {d['train_f100']:,} for training, {d['val']:,} for "
+            f"tuning decisions and {d['test']:,} held back.", False),
+        (0, "The held-back set was frozen at the start and never used to make a single "
+            "decision. It is the closest thing to an honest exam.", True),
+    ])
+    notes(s, """
+This is the methodological heart, and it is worth being slow here.
+
+Everything that could differ between the two models has been made identical: the
+images they see, how those images are split, the random jitter applied during
+training, the picture size, the shape of the training schedule, the family of
+optimiser, the random seeds, and every step of how they are scored.
+
+There is exactly one deliberate exception, and it needs explaining rather than
+hiding. Each model gets its own learning rate. The learning rate is simply how big
+a correction the model makes each time it gets something wrong — too large and it
+thrashes around, too small and it barely moves. The two architectures want very
+different values: the CNN's best setting is about ten times larger than the
+transformer's. If we had forced a single value on both, one of them would have been
+handicapped, and we would have measured our own bad choice rather than the
+architecture. So each is tuned separately, by a documented search, and that search
+is reported.
+
+The last point is the one to emphasise to any examiner. Twenty percent of the data
+was set aside at the very beginning and never touched — not for choosing learning
+rates, not for deciding when to stop training, not for anything. Every number
+presented as a result is measured on images that played no part in any decision.
+""")
+    return s
+
+
+def sl_dataset(prs, f):
+    s = slide(prs, "What the data looks like", kicker="5 · Method")
+    if f.figure("dataset_samples.png"):
+        picture(s, f.figure("dataset_samples.png"), top=I(1.55), max_h=I(2.35))
+    if f.figure("fraction_nesting.png"):
+        picture(s, f.figure("fraction_nesting.png"), top=I(4.1), max_h=I(2.05))
+    caption(s, "Top: random samples from the held-back test set. Bottom: the four "
+               "training-set sizes, each a strict subset of the next.", top=I(6.25))
+    notes(s, """
+The top strip is just what the data is: everyday object photographs across 256
+categories — musical instruments, animals, vehicles, household objects. It is a
+classic benchmark, deliberately ordinary.
+
+The bottom bar is a detail that matters more than it looks. When we shrink the
+training set to fifty percent, we do not draw a fresh random sample. The ten
+percent set is contained inside the twenty-five percent set, which is contained
+inside the fifty, and so on — like nested Russian dolls. And the shrinking is done
+per category, so no category is accidentally wiped out at the small sizes.
+
+Why bother? Because if each fraction were an independent random draw, then a
+difference between two fractions could come from the amount of data or from having
+happened to draw easier pictures. Nesting removes that ambiguity: the only thing
+that changes is how much data there is. We do this three times with three
+different random seeds, which is what gives us the error bars later.
+""")
+    return s
+
+
+def sl_design(prs, f):
+    s = slide(prs, "The experiment", kicker="6 · Method")
+    d = f.dataset_facts()
+    table(s, ["Block", "What varies", "Runs"],
+          [["Full fine-tuning, Caltech-256",
+            "2 models × 4 data sizes × 3 random seeds", "24"],
+           ["Linear probe, Caltech-256",
+            "same grid, but the model is FROZEN and only a final layer is trained", "24"],
+           ["Learning-rate searches", "3-4 rates per model, per regime", "13"],
+           ["Food-101 confirmation", "2 models × 2 data sizes × 1 seed", "4"]],
+          col_w=[1.5, 3.0, 0.6])
+    bullets(s, [
+        (0, "Then EVERY trained model is put through one identical test battery — 42 "
+            "separate evaluations covering clean accuracy, damaged images, and "
+            "filtered images.", True),
+        (0, "Three seeds per cell means every headline number is a mean with a spread, "
+            "not a single lucky run.", False),
+        (0, f"Total compute: {f.gpu_hours()} GPU-hours on one laptop graphics card.", False),
+    ], top=I(4.05), size=15)
+    notes(s, """
+Walk the table top to bottom.
+
+The first block is the main experiment: both models, four data sizes, three
+different random starts each — twenty-four training runs.
+
+The second block is a useful contrast. Instead of letting the whole model adapt,
+we freeze it completely and train only a single final layer on top of the features
+it already computes. That measures how good the pre-trained representation is
+straight out of the box, with no adaptation. Comparing the two tells you whether a
+model's advantage comes from what it already knows or from how well it adapts.
+
+The third block is the learning-rate searches described earlier — the declared
+per-model tuning.
+
+The fourth is a second dataset, Food-101, used only to check whether the findings
+hold somewhere else.
+
+Then every trained model goes through the same battery of forty-two evaluations.
+Same images, same order, same everything.
+
+And three seeds matter: a single training run can be lucky. Every number in this
+deck is an average over three, reported with its spread, so you can see whether a
+difference is real or within noise.
+""")
+    return s
+
+
+def sl_schedule_bug(prs, f):
+    sf = f.schedule_finding()
+    s = slide(prs, "A bug we caught that would have reversed the answer",
+              kicker="7 · Method · honesty")
+    if not sf:
+        bullets(s, [(0, "(archive not present)", False)])
+        return s
+    rows = []
+    for m, name in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16")):
+        r = sf[m]
+        cell = lambda k: f"{r[k][0]*100:.2f}%" if r.get(k) else "—"
+        hit, tot = sf["early_stop_counts"][m]
+        rows.append([name, cell("truncated"), cell("annealed_8"), cell("annealed_15"),
+                     f"{hit}/{tot}"])
+    table(s, ["Model", "Original (broken)", "Short schedule", "Fixed schedule",
+              "Runs cut short"], rows, col_w=[1.1, 1.3, 1.1, 1.1, 1.1], size=12)
+    bullets(s, [
+        (0, "Our training recipe stopped runs early, while the model was still moving "
+            "fast, before the phase where it settles down and consolidates.", True),
+        (0, "It hurt the transformer 15x more than the CNN (3.0 vs 0.2 points). Every "
+            "single ViT run was cut short.", False),
+        (0, "With the bug, the measured gap SHRANK with data and flipped sign. Without "
+            "it, it never flips. Same data, same seeds.", True),
+        (0, "Found before the final experiments, both models rerun identically, old "
+            "runs archived rather than deleted.", False),
+    ], top=I(3.4), size=14)
+    plain(s, "We nearly reported the opposite conclusion. The cause was a training "
+             "setting, not the models — so we fixed it, reran everything, and are "
+             "reporting the near-miss.", top=I(6.2), height=I(0.95))
+    notes(s, """
+Present this slide deliberately rather than apologetically. It is the strongest
+evidence in the deck that the results are trustworthy.
+
+Here is the mechanism in plain terms. Training uses a schedule: the model takes big
+correction steps early on and progressively smaller ones, so that it explores
+first and settles down at the end. That final settling phase is where most of the
+final quality appears. Separately, we had a rule that stopped training when the
+score stopped improving for a while — sensible on its own.
+
+The two rules fought each other. The schedule was set to run for thirty rounds, so
+after eight or nine rounds the model was still taking large steps and its score was
+bouncing around. The stopping rule saw the bouncing, concluded no progress was
+being made, and killed the run — before the settling phase ever happened.
+
+Both models were affected, but not equally. The convolutional network lost about
+0.2 percentage points. The transformer lost about three. Every single transformer
+run in the grid was cut short, against eight of twelve for the CNN.
+
+And the consequence was not cosmetic. Under the broken setting, the gap between the
+two models appeared to shrink as data grew and eventually reversed — the CNN
+appeared to win at full data. Under the corrected setting, on exactly the same data
+with the same random seeds, it never reverses. We would have reported the opposite
+conclusion, and it would have been a conclusion about a training setting rather
+than about architectures.
+
+If anyone asks why the protocol says fifteen rounds instead of thirty, this is the
+answer, and it is measured rather than asserted.
+""")
+    return s
+
+
+def sl_result_efficiency(prs, f, with_probe=True):
+    s = slide(prs, "Result 1 — who gets more out of limited data?",
+              kicker="8 · Result")
+    _eff_table(f, s, regimes=("fullft",), top=I(1.62))
+    if f.figure("fig_data_efficiency.png"):
+        picture(s, f.figure("fig_data_efficiency.png"), top=I(3.0), max_h=I(2.5))
+    g10, g100 = f.gap_at(10), f.gap_at(100)
+    if g10 is not None and g100 is not None:
+        plain(s, f"The transformer wins at every data size, and wins by MOST when data "
+                 f"is scarcest ({g10:+.2f} points at 10% data, {g100:+.2f} at 100%). "
+                 f"Every gap is bigger than the run-to-run noise.", top=I(5.7),
+              height=I(1.0))
+    notes(s, """
+This is the first result. Read the table left to right.
+
+Each cell is the percentage of held-back test images the model gets right. The plus
+or minus is the spread across three different random starts, so you can see how
+much a number would wobble if we simply retrained.
+
+The transformer is ahead at every data size. Crucially, the gap is largest when
+data is scarcest — about two points at ten percent, shrinking to under one point at
+full data.
+
+Two things to stress. First, every gap is larger than the run-to-run spread, so
+these are real differences, not noise. Second, this is the opposite of what people
+often assume. You will frequently hear that transformers are data-hungry and lose
+to CNNs when data is limited. That belief comes from training from scratch. In the
+transfer-learning setting, where both models arrive already educated, it inverts:
+the transformer's prior education transfers better precisely when there is least
+new data to learn from.
+
+If someone asks "is a two-point difference a big deal?" — in this field, on a
+frozen test set, with the spread this small, yes. It is also consistent across all
+four data sizes and three seeds, which matters more than the size.
+""")
+    if with_probe and f.available()["probes"]:
+        s2 = slide(prs, "Result 1b — is it better knowledge, or better adaptation?",
+                   kicker="8b · Result")
+        _eff_table(f, s2, regimes=("linprobe",), top=I(1.62))
+        bullets(s2, [
+            (0, "A 'linear probe' freezes the model completely and trains only a single "
+                "final layer. It measures what the model already knew, with no "
+                "adaptation allowed.", True),
+            (0, "The ordering INVERTS: the transformer's frozen features win at 10% "
+                "data, but the CNN's win at 25% and above.", False),
+            (0, "So the transformer's fine-tuning advantage is not simply that its "
+                "features are better. It is that they ADAPT better.", True),
+        ], top=I(3.3), size=15)
+        plain(s2, "Frozen, the CNN's knowledge is often the more useful. Allowed to "
+                  "adapt, the transformer pulls ahead. The advantage is in the "
+                  "adapting.", top=I(5.95), height=I(0.95))
+        notes(s2, """
+This is a subtle result and it rewards a slow explanation.
+
+A linear probe works like this. You freeze the entire pre-trained model so nothing
+inside it can change, run your images through it, and take the numerical summary it
+produces for each image. Then you train one very simple layer on top of those
+summaries. Because the model itself cannot change, this measures purely what it
+already knew — its raw knowledge, with adaptation switched off.
+
+And the ordering flips. With the models frozen, the CNN's features are actually
+more useful at twenty-five percent data and above. Only at the very smallest data
+size does the transformer's frozen representation win.
+
+Put the two results together and you get something more interesting than either
+alone. When both models are allowed to adapt, the transformer wins everywhere. When
+neither can adapt, the CNN often wins. So the transformer's advantage is not that
+it knows more — it is that it is better at being taught. That is a claim about
+adaptability, and it is only visible because we ran both regimes.
+""")
+    return s
+
+
+def sl_how_corruption(prs, f):
+    s = slide(prs, "How we test robustness", kicker="9 · Method")
+    bullets(s, [
+        (0, "Real photographs are not clean: sensors add noise, lenses go out of focus, "
+            "files get compressed. A model that only works on pristine images is not "
+            "much use.", True),
+        (0, "So we damage every test image in three standard ways, at five increasing "
+            "severities, and re-score.", False),
+        (0, "The damage is generated on the fly from a fixed recipe, so BOTH models are "
+            "scored on pixel-identical damaged images. No model gets an easier copy.", True),
+    ], top=I(1.6), height=I(1.55), size=15)
+    if f.figure("corruption_ladder.png"):
+        picture(s, f.figure("corruption_ladder.png"), top=I(3.15), max_h=I(3.5))
+    notes(s, """
+This slide is mostly the picture — let people look at it.
+
+Three rows, three kinds of damage, getting worse left to right.
+
+The top row is sensor noise, the speckle you get from a phone camera in a dark
+room. The middle row is blur, an out-of-focus lens. The bottom row is JPEG
+compression, the blocky smearing you get when an image has been saved too small —
+which, on the internet, is nearly always.
+
+These are not arbitrary. They are the standard corruption benchmark used across the
+robustness literature, at the standard severity levels, so our numbers are
+comparable to published work.
+
+One technical point worth making because it is the kind of thing that quietly ruins
+comparisons: the damaged images are generated fresh each time from a fixed recipe
+tied to the image and the severity level. That means both models are scored on
+byte-for-byte identical damaged pictures. Neither gets a luckier draw of noise. It
+also means anyone can reproduce these exact images.
+""")
+    return s
+
+
+def sl_result_corruption(prs, f):
+    s = slide(prs, "Result 2 — which model survives damaged images?",
+              kicker="10 · Result")
+    if f.figure("fig_corruption.png"):
+        picture(s, f.figure("fig_corruption.png"), top=I(1.6), max_h=I(3.5))
+    rows = [[{"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m],
+             f.top1_str(m, 100), f.corruption_drop(m)] for m in ("resnet50", "vit_b16")]
+    table(s, ["Model", "Clean accuracy", "Average accuracy LOST to damage"], rows,
+          top=I(5.25), col_w=[1, 1.2, 1.8], size=12)
+    rd, vd = f.corruption_drop("resnet50"), f.corruption_drop("vit_b16")
+    if "pending" not in (rd, vd):
+        plain(s, f"On clean images the two are within a point of each other. On damaged "
+                 f"images the CNN loses {rd} of its accuracy and the transformer only "
+                 f"{vd} — the gap widens as damage worsens.", top=I(6.15), height=I(0.9))
+    notes(s, """
+Read the curves first: accuracy on the vertical axis, damage severity increasing to
+the right. Both models fall, which is expected. What matters is that the orange
+transformer line falls much more slowly.
+
+Now the table, which is the number to remember. Averaged over all fifteen
+combinations of damage type and severity, the CNN loses about twenty-seven percent
+of its accuracy while the transformer loses about seventeen.
+
+The striking part is how the gap behaves. On clean images the two models are within
+about three-quarters of a point of each other — nearly tied. Under the heaviest
+sensor noise the difference is nearly thirty points. So a benchmark that only
+reported clean accuracy would describe these two models as near-equivalent, and
+would be badly misleading about how they behave on real photographs.
+
+This is a practical point, not just an academic one. If you are deploying to
+phone cameras, security footage, or compressed web images, this difference matters
+far more than the clean-accuracy difference does.
+
+The obvious next question is WHY the transformer holds up better — and that is what
+the next section answers.
+""")
+    return s
+
+
+def sl_what_is_frequency(prs, f):
+    s = slide(prs, "What “spatial frequency” means for a photograph",
+              kicker="11 · Background")
+    bullets(s, [
+        (0, "Any image can be separated into coarse structure and fine detail — the "
+            "same way a piece of music separates into bass and treble.", True),
+        (1, "LOW frequency = broad shapes, overall layout, big blocks of colour", False),
+        (1, "HIGH frequency = edges, texture, fine print, hair, grain", False),
+        (0, "Below: the same photograph with progressively more high-frequency detail "
+            "allowed back in. Far left keeps only the coarsest shapes.", False),
+    ], top=I(1.58), height=I(1.5), size=15)
+    if f.figure("frequency_lowpass_ladder.png"):
+        picture(s, f.figure("frequency_lowpass_ladder.png"), top=I(3.05), max_h=I(3.4))
+    plain(s, "Think bass and treble for pictures. We can turn each band up or down and "
+             "watch what the model does.", top=I(6.5), height=I(0.75))
+    notes(s, """
+This slide creates the vocabulary for the contribution, so do not rush it.
+
+The analogy that works for everybody is audio. A piece of music can be split into
+bass and treble. Turn the treble down and it goes muffled, but you can still follow
+the tune. Turn the bass out and it goes thin and tinny.
+
+Images work the same way. The low frequencies are the broad structure — the overall
+shape of an object, big regions of colour, the general layout. The high frequencies
+are the fine detail — edges, texture, fur, lettering, film grain.
+
+The strip along the bottom is exactly that. On the far left we have kept only the
+very coarsest information; you can see there is something there but not what. As
+you move right we let progressively finer detail back in, until on the far right the
+image is complete.
+
+Two useful things follow. First, this gives us a dial: we can control precisely
+which kinds of visual information a model is allowed to see. Second, it gives us a
+free correctness check — at the far right the filter is mathematically doing nothing
+at all, so the model's score there must exactly equal its normal score. It does,
+which tells us the filtering code is right.
+
+The faint halos around objects in the middle images are a known side-effect of
+using a hard cutoff. It is expected, it is standard for this analysis, and it is
+noted in the report.
+""")
+    return s
+
+
+def sl_result_frequency(prs, f):
+    s = slide(prs, "Result 3 — which frequencies does each model rely on?",
+              kicker="12 · Result")
+    if f.figure("fig_band_noise.png"):
+        picture(s, f.figure("fig_band_noise.png"), top=I(1.6), max_h=I(3.7))
+    rows = [[{"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m], f.band_weakness(m),
+             f.freq_auc(m, "lp")] for m in ("resnet50", "vit_b16")]
+    table(s, ["Model", "Most damaging noise band", "Accuracy kept under low-pass"],
+          rows, top=I(5.45), col_w=[1, 1.5, 1.6], size=12)
+    plain(s, "We add the same amount of interference in different frequency bands. The "
+             "CNN has a clear weak spot at low frequency; the transformer does not.",
+          top=I(6.3), height=I(0.85))
+    notes(s, """
+Here is the experiment. We take a fixed amount of interference — think of it as a
+fixed volume of static — and slide it across the frequency range. First we put all
+of it in the low frequencies, then a bit higher, and so on up to the finest detail.
+Crucially the AMOUNT is held constant; only its position changes. So the curve
+measures where the model is vulnerable, not how much noise we added.
+
+The blue CNN curve has a pronounced dip at low frequency. Interference in the coarse
+structure hurts it badly. The orange transformer curve is much flatter, with no
+comparable weak point anywhere.
+
+That is the mechanism behind the previous slide. The CNN has a specific
+vulnerability; the transformer's dependence is spread more evenly. Real-world damage
+— noise, blur, compression — disturbs many frequency bands at once, so a model with
+a sharp weak spot gets caught by it and a model without one does not.
+
+This is what makes the project an explanation rather than a benchmark. We are not
+just reporting that one model is more robust. We are identifying which part of the
+visual signal each model leans on, and using that to account for the robustness
+result.
+""")
+    return s
+
+
+def sl_contribution(prs, f):
+    s = slide(prs, "The contribution — the CNN has to LEARN robustness; the ViT arrives "
+                   "with it", kicker="13 · Contribution")
+    if f.figure("fig_frequency_shift.png"):
+        picture(s, f.figure("fig_frequency_shift.png"), top=I(1.55), max_h=I(3.6))
+    ps = f.profile_shift()
+    if ps and "resnet50" in ps and "vit_b16" in ps:
+        r, v = ps["resnet50"], ps["vit_b16"]
+        ratio = r["max_abs"] / v["max_abs"] if v["max_abs"] else float("nan")
+        bullets(s, [
+            (0, f"Dashed = trained on 10% of the data. Solid = trained on 100%. If the "
+                f"two lines sit apart, the model's robustness DEPENDS on how much data "
+                f"it was given.", True),
+            (0, f"ResNet-50's lines separate widely (largest change {r['max_abs']:.3f}, "
+                f"in the finest-detail band). ViT-B/16's lie almost on top of each other "
+                f"({v['max_abs']:.3f}). A {ratio:.0f}x difference.", False),
+        ], top=I(5.25), size=14, height=I(1.05))
+        plain(s, "The CNN only becomes robust to fine-detail interference once it has "
+                 "seen plenty of data. The transformer is already robust, and stays "
+                 "that way — which is exactly why it wins by most when data is scarce.",
+              top=I(6.35), height=I(0.95))
+    notes(s, """
+This is the original contribution — the part that is not a replication of known
+results. Take it slowly.
+
+Each panel shows one model. The dashed line is that model trained on only ten
+percent of the data; the solid line is the same model trained on all of it. Both are
+divided by the model's own clean accuracy, so we are asking what FRACTION of its
+ability survives, which is what lets a weak model and a strong model be compared on
+one axis.
+
+Look at the left panel, the CNN. The two lines separate dramatically at the right
+side — the fine-detail end. Trained on little data, the CNN is fragile against
+fine-detail interference. Trained on plenty, it becomes much more robust there.
+Its robustness profile MOVES with the data budget.
+
+Now the right panel, the transformer. The two lines are almost indistinguishable.
+Whether it saw ten percent or one hundred percent of the data, its robustness
+profile is essentially the same.
+
+Quantitatively, the CNN's profile moves about twelve times as much as the
+transformer's.
+
+Here is the interpretation, and it is the sentence to land. The convolutional
+network has to LEARN robustness to fine-detail interference from the fine-tuning
+data. The transformer already has it, from pre-training, and does not need your
+data to acquire it. Which explains the very first result: the transformer's
+advantage is largest exactly where the CNN has least data from which to learn the
+thing the transformer already possesses.
+
+That ties all three results into a single account, and it is the reason this is a
+characterisation rather than a leaderboard.
+
+If asked how this differs from prior work: existing research established that the
+two families differ in frequency response, but at full scale. What is new here is
+that the difference is itself data-dependent for one family and not the other —
+which only becomes visible if you deliberately vary the data budget while holding
+everything else fixed, which is what this protocol does.
+""")
+    return s
+
+
+def sl_overlap(prs, f):
+    s = slide(prs, "Do they make the same mistakes?", kicker="14 · Supporting")
+    o = f.overlap_at(100)
+    if o:
+        rows = [["Both models correct", f"{o['both_correct']*100:.1f}%"
+                 if "both_correct" in o else "—"],
+                ["Both models wrong", f"{o['both_wrong']*100:.1f}%"],
+                ["…and giving the SAME wrong answer", f"{o['same_wrong']*100:.1f}%"],
+                ["Agreement beyond chance (Cohen's κ)", f"{o['kappa']:.3f}"],
+                ["If you could always pick the right one", f"{o['oracle']*100:.2f}%"]]
+    else:
+        rows = [["(pending)", ""]]
+    table(s, ["At full data", "Value"], rows, top=I(1.62), col_w=[2.6, 1])
+    if f.figure("fig_error_overlap.png"):
+        picture(s, f.figure("fig_error_overlap.png"), top=I(3.55), max_h=I(2.5))
+    if o:
+        best = max(f.top1("resnet50", 100)[0], f.top1("vit_b16", 100)[0]) * 100
+        plain(s, f"They fail on different images. A perfect chooser between them would "
+                 f"reach {o['oracle']*100:.1f}%, against {best:.1f}% for the better model "
+                 f"alone — so they are complementary, not interchangeable.",
+              top=I(6.2), height=I(0.9))
+    notes(s, """
+This slide answers a question a good examiner will ask: are these two models really
+different, or are they two roads to the same place?
+
+The key row is the last one. If you had an oracle that could look at each image and
+pick whichever model happened to be right, you would score about ninety-three and a
+half percent — roughly four points above the better model on its own. That headroom
+only exists because they fail on DIFFERENT images.
+
+Cohen's kappa is a fairness correction. Two models that are each about ninety
+percent accurate will agree most of the time purely by luck, so raw agreement is
+misleading. Kappa subtracts that luck. A value near one would mean interchangeable;
+near zero would mean independent. We are around 0.55 — clearly related, since they
+solve the same task, but genuinely different in where they fail.
+
+There is a practical implication worth mentioning: because they are complementary,
+combining them would beat either one. We do not do that here — it is outside the
+scope of a controlled comparison — but it follows directly from this table.
+""")
+    return s
+
+
+def sl_calibration(prs, f):
+    s = slide(prs, "Do they know when they are unsure?", kicker="15 · Supporting")
+    if f.figure("fig_calibration.png"):
+        picture(s, f.figure("fig_calibration.png"), top=I(1.6), max_h=I(3.6))
+    rows = [[{"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m], f.ece(m, 100)]
+            for m in ("resnet50", "vit_b16")]
+    table(s, ["Model", "Miscalibration (lower is better)"], rows, top=I(5.35),
+          col_w=[1, 1.6], size=12)
+    plain(s, "Both models' confidence is about equally trustworthy — so the "
+             "transformer's robustness is not bought by simply being less confident.",
+          top=I(6.2), height=I(0.85))
+    notes(s, """
+Alongside a prediction, these models emit a confidence — "I am eighty percent sure
+this is a dog". Calibration asks whether that number can be believed. If you collect
+every prediction the model made with eighty percent confidence, was it right about
+eighty percent of the time?
+
+This matters whenever a system has to decide when to defer to a human. A model that
+is confidently wrong is far more dangerous than one that admits uncertainty.
+
+The left panel plots stated confidence against actual accuracy. The dashed diagonal
+is perfect honesty. Points below the line mean overconfidence.
+
+The number in the table summarises the average gap. Both models sit around three
+percent, which is typical and unremarkable.
+
+The reason this slide exists is defensive, and worth saying out loud. Someone could
+argue that the transformer only looks robust because it is systematically less
+confident — hedging its bets. This shows that is not the case. The two are
+calibrated about equally, so the robustness difference is real and not an artefact
+of confidence behaviour.
+""")
+    return s
+
+
+def sl_deployment(prs, f):
+    s = slide(prs, "What the accuracy costs you", kicker="16 · Cost")
+    if f.figure("fig_deployment.png"):
+        picture(s, f.figure("fig_deployment.png"), top=I(1.6), max_h=I(3.5))
+    rd, vd = f.deployment_row("resnet50"), f.deployment_row("vit_b16")
+    if rd and vd:
+        table(s, ["", "ResNet-50", "ViT-B/16", "ratio"],
+              [["Parameters (M)", f"{rd.get('params_m',0):.1f}", f"{vd.get('params_m',0):.1f}",
+                f"{vd.get('params_m',1)/max(rd.get('params_m',1),1e-9):.1f}x"],
+               ["Compute, GMACs @224", f"{rd.get('gmacs',0):.2f}", f"{vd.get('gmacs',0):.2f}",
+                f"{vd.get('gmacs',1)/max(rd.get('gmacs',1),1e-9):.1f}x"],
+               ["Training speed (img/s)", f"{rd.get('train_imgs_per_sec',float('nan')):.0f}",
+                f"{vd.get('train_imgs_per_sec',float('nan')):.0f}", ""]],
+              top=I(5.2), col_w=[1.6, 1, 1, 0.7], size=12)
+    plain(s, "The transformer's advantage comes with roughly 3.6x the parameters and 4x "
+             "the computation per image. Whether that trade is worth it depends on where "
+             "the model has to run.", top=I(6.35), height=I(0.9))
+    notes(s, """
+An honest comparison has to include cost, and this is where the CNN answers back.
+
+The transformer has about three and a half times as many parameters — meaning a
+bigger file and more memory. It needs roughly four times the arithmetic to process
+one image, which translates directly into slower inference and more battery or
+electricity. And in our own measurements it trains about three times slower.
+
+So the finding is not "use transformers". It is a trade you have to price for your
+own situation. On a server where compute is cheap and accuracy matters, the
+transformer looks good. On a phone, a drone, or an embedded camera, four times the
+computation per frame may simply be unaffordable, and the CNN's near-equal clean
+accuracy at a quarter of the cost is the better engineering choice.
+
+Note also that all of this ran on a single laptop graphics card. That is worth
+mentioning: the study is reproducible by anyone with modest hardware, which is
+unusual for architecture comparisons and was a deliberate design constraint.
+""")
+    return s
+
+
+def sl_summary(prs, f, final=False):
+    s = slide(prs, "What we found", kicker="Summary")
+    g10 = f.gap_at(10)
+    ps = f.profile_shift()
+    ratio = (ps["resnet50"]["max_abs"] / ps["vit_b16"]["max_abs"]
+             if ps and ps.get("vit_b16", {}).get("max_abs") else None)
+    items = [
+        (0, "1. Under a genuinely controlled protocol, the Vision Transformer is more "
+            "data-efficient — it wins at every data size and by most when data is "
+            "scarce.", True),
+        (0, "2. It is also substantially more robust to damaged images, and the "
+            "advantage grows as damage worsens.", True),
+        (0, "3. The reason: the CNN has a sharp low-frequency weak spot; the "
+            "transformer's dependence is spread evenly.", True),
+        (0, f"4. And the contribution — the CNN's robustness profile depends on how "
+            f"much data it got"
+            + (f" ({ratio:.0f}x more movement than the transformer's)" if ratio else "")
+            + ". The transformer's does not. The CNN must learn what the transformer "
+              "already has.", True),
+        (0, "5. The cost: ~3.6x parameters, ~4x computation. The right choice depends "
+            "on where it runs.", False),
+    ]
+    bullets(s, items, top=I(1.62), size=15, height=I(4.0))
+    takeaway(s, "Not a leaderboard — a characterisation. The frequency behaviour "
+                "explains the robustness result, and both explain the data-efficiency "
+                "result.", top=I(5.75))
+    notes(s, """
+Close on the shape of the argument rather than the individual numbers.
+
+Point one is the headline: under a fair comparison the transformer gets more out of
+limited data, and its advantage is biggest exactly where data is most limited.
+
+Point two: it is also much more robust to the kinds of damage real photographs
+actually suffer.
+
+Point three explains point two: the CNN has an identifiable weak spot at coarse
+spatial frequencies, and the transformer does not.
+
+Point four is the new part. That weak spot is not fixed — the CNN's robustness
+profile changes substantially depending on how much fine-tuning data it received,
+while the transformer's does not change at all. So the CNN has to learn from your
+data something the transformer brought with it. That single sentence explains point
+one.
+
+Point five is the honest counterweight: all of this costs about four times the
+computation, so the engineering answer depends on the deployment target.
+
+The framing to leave people with: this is not a leaderboard entry. Every result
+explains the one before it, which is what makes it a characterisation of how the
+two families behave rather than a measurement of which one scores higher.
+""")
+    return s
+
+
+# ==========================================================================
+# helpers
+# ==========================================================================
 def _eff_table(f, s, regimes=("fullft",), top=None):
-    headers = ["Training data per class", "10%", "25%", "50%", "100%"]
+    headers = ["Training data per category", "10%", "25%", "50%", "100%"]
     rows, hl = [], []
     for regime in regimes:
         for m in ("resnet50", "vit_b16"):
             if f.top1(m, 100, regime=regime) is None and f.top1(m, 10, regime=regime) is None:
                 continue
             e = f.efficiency_row(m, regime=regime)
-            name = {"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m]
-            if regime == "linprobe":
-                name += " (probe)"
+            name = {"resnet50": "ResNet-50 (CNN)", "vit_b16": "ViT-B/16 (Transformer)"}[m]
             rows.append([name, e[10], e[25], e[50], e[100]])
-    if len(rows) >= 2 and all(f.gap_at(x) is not None for x in (10, 100)):
-        rows.append(["Gap (ViT − ResNet)", f.gap_str(10), f.gap_str(25),
-                     f.gap_str(50), f.gap_str(100)])
+    if len(rows) >= 2 and all(f.gap_at(x, regime=regimes[0]) is not None for x in (10, 100)):
+        rows.append(["Difference", f.gap_str(10, regime=regimes[0]),
+                     f.gap_str(25, regime=regimes[0]), f.gap_str(50, regime=regimes[0]),
+                     f.gap_str(100, regime=regimes[0])])
         hl = [len(rows) - 1]
     if not rows:
         rows = [["(pending)"] * 5]
-    return table(s, headers, rows, top=top or __import__("pptx").util.Inches(1.8),
-                 highlight_rows=hl, col_w=[2.4, 1, 1, 1, 1])
+    return table(s, headers, rows, top=top or I(1.8), highlight_rows=hl,
+                 col_w=[2.4, 1, 1, 1, 1], size=13)
 
 
-def _protocol_slide(prs, f):
-    d = f.dataset_facts()
-    s = slide(prs, "What “controlled” means here", kicker="Method")
-    bullets(s, [
-        (0, "One protocol, two architectures — ResNet-50 vs ViT-B/16, both ImageNet-1k only", True),
-        (1, "timm tags: resnet50.a1_in1k and vit_base_patch16_224.augreg_in1k", False),
-        (1, "The default ViT-B/16 weights are ImageNet-21k; using them would have broken "
-            "the single most important control in the study", False),
-        (0, f"Identical: {CONTROLLED}", False),
-        (0, "Declared per-model tuning — one 3-point LR sweep each", True),
-        (1, f"ResNet-50 → {f.lr_selected('resnet50')}   |   ViT-B/16 → {f.lr_selected('vit_b16')}", False),
-        (1, "Forcing one LR on both families would cripple one of them and invalidate "
-            "the comparison", False),
-        (0, f"Data: Caltech-256, {d['classes']} classes (clutter excluded), "
-            f"{d['total']:,} images, 70/10/20 stratified; test split frozen", True),
-        (0, "Fractions are per-class and NESTED: f10 ⊂ f25 ⊂ f50 ⊂ f100, three "
-            "independent seed nestings", False),
-    ])
-    return s
+def _core_story(prs, f, final=False):
+    sl_question(prs, f)
+    sl_two_models(prs, f)
+    sl_transfer(prs, f)
+    sl_controlled(prs, f)
+    sl_dataset(prs, f)
+    sl_design(prs, f)
+    sl_schedule_bug(prs, f)
+    sl_result_efficiency(prs, f)
+    sl_how_corruption(prs, f)
+    sl_result_corruption(prs, f)
+    sl_what_is_frequency(prs, f)
+    sl_result_frequency(prs, f)
+    sl_contribution(prs, f)
+    sl_overlap(prs, f)
+    sl_calibration(prs, f)
+    sl_deployment(prs, f)
 
 
+# ==========================================================================
+# progress decks
+# ==========================================================================
 def deck_progress_01(f):
     prs = new_deck()
     title_slide(prs, "Progress Update 1", "Project resumed — framework complete and "
                 "the CNN arm fully run",
                 [COURSE + " · " + TITLE, STUDENT, GUIDE])
+    notes(prs.slides[-1], """
+This is the first update after a pause in the work. Be straightforward about that:
+the framework is now finished, the convolutional half of the experiment is fully
+run, and the transformer half is in progress.
+""")
 
     s = slide(prs, "Where the project stands", kicker="Status")
     bullets(s, [
-        (0, "Work paused for a period after the initial framework was set up; it has "
-            "now resumed and the backlog is cleared.", True),
-        (0, "Everything committed in the project plan for the CNN side is complete and "
-            "on disk, not in progress:", False),
-        (1, f"{f.n_runs('fullft')} full fine-tuning runs · 4 data fractions × 3 seeds", False),
-        (1, "declared 3-point learning-rate sweep, winner recorded in the config", False),
-        (1, "frozen-test evaluation with a full per-image prediction table for every run", False),
-        (0, f"Total compute so far: {f.gpu_hours()} GPU-hours on one RTX 4060 8 GB laptop.", False),
-        (0, "The transformer arm is running now; the evaluation battery follows.", True),
+        (0, "Work paused for a period after the initial setup; it has now resumed and "
+            "the backlog is cleared.", True),
+        (0, "Everything committed for the CNN side is complete and on disk:", False),
+        (1, f"{f.n_runs('fullft')} fine-tuning runs — 4 data sizes × 3 random seeds", False),
+        (1, "a documented learning-rate search, with the choice recorded in the config", False),
+        (1, "held-back-set evaluation with a full per-image record for every run", False),
+        (0, f"Compute so far: {f.gpu_hours()} GPU-hours on one laptop graphics card.", False),
+        (0, "The transformer arm is running; the evaluation battery follows.", True),
     ])
     takeaway(s, "The reproducible framework is finished — what remains is running it.")
+    notes(s, """
+Lead with the honest status: there was a pause, it is over, and the backlog is
+cleared. Then show that the CNN half is genuinely complete rather than
+in-progress — every run, every evaluation, every log on disk.
+""")
 
-    s = slide(prs, "The question, unchanged", kicker="Problem")
-    bullets(s, [(0, PROBLEM, False),
-                (0, "The aim is to characterise not just which model scores higher, but "
-                    "how and why each one behaves as it does.", True)], size=16)
-    if f.figure("dataset_samples.png"):
-        picture(s, f.figure("dataset_samples.png"), top=__import__("pptx").util.Inches(4.0),
-                max_h=__import__("pptx").util.Inches(2.1))
-
-    _protocol_slide(prs, f)
+    sl_question(prs, f)
+    sl_two_models(prs, f)
+    sl_transfer(prs, f)
+    sl_controlled(prs, f)
 
     s = slide(prs, "Reproducibility is built in, not promised", kicker="Framework")
     bullets(s, [
-        (0, "Every run is keyed by a run ID: {model}_{dataset}_f{frac}_s{seed}_{regime}", True),
-        (0, "Each run writes its own merged config, per-epoch log, metrics, and a "
-            "per-image prediction table — a run is self-describing", False),
-        (0, "Splits generated once and committed to git; the test split is frozen and "
-            "has never been used for any decision", True),
-        (0, "Seeding covers python/numpy/torch/cuda plus cuDNN determinism flags and "
-            "per-worker dataloader seeds", False),
-        (0, "Drivers are resumable: a completed run is skipped, so an interrupted "
-            "matrix is simply relaunched", False),
+        (0, "Every run is named by what produced it: model, dataset, data size, seed, "
+            "regime.", True),
+        (0, "Each run writes its own configuration, per-epoch log, metrics, and a "
+            "per-image record of every prediction it made.", False),
+        (0, "Splits were generated once and committed; the held-back set is frozen and "
+            "has never influenced a decision.", True),
+        (0, "Random seeds are fixed everywhere, so a rerun reproduces the same numbers.", False),
+        (0, "Every figure and table is generated by script from one results file — no "
+            "number is typed by hand.", True),
         (0, "Public repository: github.com/KPraveenRaj/cnn-vs-vit", False),
     ])
+    notes(s, """
+This slide is about trustworthiness. The claim is that any number in this project
+can be traced back to the run that produced it, and that rerunning gives the same
+answer.
 
-    s = slide(prs, "CNN arm: data efficiency on Caltech-256", kicker="Result")
-    _eff_table(f, s)
+The last point is worth emphasising to a supervisor: no number in any slide or
+report is typed by hand. They are all generated from a single results table by
+script, so a slide cannot silently disagree with the data.
+""")
+
+    s = slide(prs, "CNN arm: how accuracy grows with data", kicker="Result")
+    _eff_table(f, s, regimes=("fullft",))
     if f.figure("fig_data_efficiency.png"):
-        picture(s, f.figure("fig_data_efficiency.png"),
-                top=__import__("pptx").util.Inches(3.15),
-                max_h=__import__("pptx").util.Inches(3.05))
-    caption(s, "Frozen-test top-1, mean ± SD over 3 seeds. Generated from "
-               "results/tables/master.csv.")
+        picture(s, f.figure("fig_data_efficiency.png"), top=I(3.15), max_h=I(2.6))
+    caption(s, "Held-back-set accuracy, mean ± spread over 3 seeds.", top=I(5.9))
+    notes(s, """
+Accuracy on held-back images against how much training data was used. The plus or
+minus is the spread over three different random starts.
 
-    s = slide(prs, "The declared learning-rate sweep", kicker="Method evidence")
+Note that going from ten percent of the data to all of it buys roughly twelve
+points. That is the baseline against which the transformer will be compared.
+""")
+
+    s = slide(prs, "The learning-rate search", kicker="Method evidence")
     grid = f.lr_grid("resnet50")
-    rows = [[lr, v, "← selected" if sel else ""] for lr, v, sel in grid] or [["(pending)"] * 3]
-    table(s, ["Learning rate", "Best val top-1", ""], rows,
+    rows = [[lr, v, "← chosen" if sel else ""] for lr, v, sel in grid] or [["(pending)"] * 3]
+    table(s, ["Learning rate", "Best validation accuracy", ""], rows,
           highlight_rows=[i for i, (_, _, sel) in enumerate(grid) if sel],
-          col_w=[1.2, 1.2, 1])
+          col_w=[1.2, 1.4, 1])
     bullets(s, [
-        (0, "8-epoch runs at f100, seed 0, schedule shape preserved.", False),
-        (0, "Selection is by validation top-1 only — the frozen test split never "
-            "influences a hyperparameter.", True),
-        (0, "The winner is an interior grid point, so the optimum is bracketed rather "
-            "than sitting at an edge of the search.", False),
-    ], top=__import__("pptx").util.Inches(3.9))
+        (0, "The learning rate controls how large a correction the model makes each "
+            "time it is wrong.", False),
+        (0, "Chosen on the validation set only — the held-back set never influences any "
+            "setting.", True),
+        (0, "The winner sits in the middle of the range searched, so the best value is "
+            "bracketed rather than at the edge of what we tried.", False),
+    ], top=I(3.9), size=15)
+    notes(s, """
+Explain why this slide exists at all. Since each model gets its own learning rate,
+that choice has to be visible and defensible rather than hand-waved.
+
+The winner being in the middle of the searched range matters: if the best value had
+been at the edge, it would mean we never found the true optimum and the model might
+be under-tuned.
+""")
 
     s = slide(prs, "Next", kicker="Plan")
     bullets(s, [
-        (0, "ViT-B/16 declared LR sweep, then the matching 12-run matrix", True),
-        (0, "Linear probes on cached features for both models (data efficiency of the "
-            "frozen representation)", False),
-        (0, "Evaluation battery on every checkpoint: corruption robustness and FFT "
-            "frequency sensitivity", False),
-        (0, "Then the analysis that the project exists for — whether frequency "
-            "behaviour explains the robustness differences", True),
+        (0, "ViT-B/16 learning-rate search, then its matching 12-run grid", True),
+        (0, "Linear probes for both models — how good is the knowledge before any "
+            "adaptation?", False),
+        (0, "The evaluation battery on every trained model: damaged images and "
+            "frequency-filtered images", False),
+        (0, "Then the analysis this project exists for — does frequency behaviour "
+            "explain the robustness differences?", True),
     ])
     save(prs, OUT / "progress_01_resumption.pptx")
 
 
 def deck_progress_02(f):
     prs = new_deck()
-    av = f.available()
     title_slide(prs, "Progress Update 2", "Both arms complete — the head-to-head "
-                "comparison is now on the table",
+                "comparison is on the table",
                 [COURSE + " · " + TITLE, STUDENT, GUIDE])
-
-    s = slide(prs, "ViT-B/16: the declared sweep", kicker="Method evidence")
+    s = slide(prs, "ViT-B/16: the learning-rate search", kicker="Method evidence")
     grid = f.lr_grid("vit_b16")
-    rows = [[lr, v, "← selected" if sel else ""] for lr, v, sel in grid] or [["(pending)"] * 3]
-    table(s, ["Learning rate", "Best val top-1", ""], rows,
+    rows = [[lr, v, "← chosen" if sel else ""] for lr, v, sel in grid] or [["(pending)"] * 3]
+    table(s, ["Learning rate", "Best validation accuracy", ""], rows,
           highlight_rows=[i for i, (_, _, sel) in enumerate(grid) if sel],
-          col_w=[1.2, 1.2, 1])
+          col_w=[1.2, 1.4, 1])
     bullets(s, [
-        (0, "The ViT grid is one decade below the CNN grid (1e-5/3e-5/1e-4 vs "
-            "1e-4/3e-4/1e-3) — and that is the point of declared per-model tuning.", True),
-        (0, "Reusing the CNN grid would have put the ViT optimum at or below the bottom "
-            "edge: the transformer would have been handicapped at exactly the "
-            "comparison the study exists to make.", False),
-        (0, "Same protocol otherwise: 8 epochs, f100, seed 0, selection on validation only.", False),
-    ], top=__import__("pptx").util.Inches(3.9))
+        (0, "The transformer's range sits a full decade below the CNN's — and that is "
+            "exactly why per-model tuning was declared in advance.", True),
+        (0, "Reusing the CNN's range would have put the transformer's best value at the "
+            "very bottom edge: it would have been handicapped at precisely the "
+            "comparison this project exists to make.", False),
+        (0, "The grid was extended once, because the first winner landed on an edge and "
+            "an edge winner means the optimum was never bracketed.", False),
+    ], top=I(3.9), size=14)
+    notes(s, """
+The point of this slide is fairness. The two architectures want genuinely different
+learning rates — the transformer's best is about ten times smaller. Had we forced
+one value on both, we would have measured our own arbitrary choice.
 
-    s = slide(prs, "Data efficiency, head to head", kicker="Headline result")
-    _eff_table(f, s)
-    if f.figure("fig_data_efficiency.png"):
-        picture(s, f.figure("fig_data_efficiency.png"),
-                top=__import__("pptx").util.Inches(3.2),
-                max_h=__import__("pptx").util.Inches(2.95))
-    caption(s, "Frozen-test top-1, mean ± SD over 3 seeds, 5,952 held-out images.")
+Mention the grid extension: the first search returned a winner at the edge of the
+range, which means we had not actually found the best value. So the range was
+widened until the winner had worse values on both sides of it.
+""")
 
-    s = slide(prs, "Reading the result", kicker="Discussion")
-    g10, g100 = f.gap_at(10), f.gap_at(100)
-    if g10 is not None and g100 is not None:
-        direction = ("widens" if abs(g10) > abs(g100) else "narrows")
-        pts = [
-            (0, f"At 100% data the gap is {f.gap_str(100)}; at 10% it is {f.gap_str(10)}.", True),
-            (0, f"The gap {direction} as data shrinks — which is the data-efficiency "
-                f"claim this project set out to measure, under one protocol rather than "
-                f"across papers.", False),
-            (0, "Both families were given the same data, the same augmentation, the same "
-                "schedule shape and their own swept learning rate, so the difference is "
-                "attributable to architecture and pre-training bias.", False),
-        ]
-    else:
-        pts = [(0, "Numbers land when the ViT matrix finishes.", True)]
-    bullets(s, pts + [
-        (0, "Seed spread is small enough that the ordering is stable, not a "
-            "single-run artefact.", False),
-        (0, "Next: does this ordering survive input degradation?", True)])
-
-    s = slide(prs, "Deployment cost — the other half of any comparison", kicker="Cost")
-    rd, vd = f.deployment_row("resnet50"), f.deployment_row("vit_b16")
-    if rd and vd:
-        rows = [["Parameters (M)", f"{rd.get('params_m', 0):.1f}", f"{vd.get('params_m', 0):.1f}"],
-                ["Compute (GMACs @224)", f"{rd.get('gmacs', 0):.2f}", f"{vd.get('gmacs', 0):.2f}"],
-                ["Feature dim", f"{rd.get('feature_dim', 0):.0f}", f"{vd.get('feature_dim', 0):.0f}"],
-                ["Peak train VRAM (MB)", f"{rd.get('peak_vram_mb', float('nan')):.0f}",
-                 f"{vd.get('peak_vram_mb', float('nan')):.0f}"],
-                ["Train throughput (img/s)", f"{rd.get('train_imgs_per_sec', float('nan')):.0f}",
-                 f"{vd.get('train_imgs_per_sec', float('nan')):.0f}"]]
-    else:
-        rows = [["(pending)", "", ""]]
-    table(s, ["", "ResNet-50", "ViT-B/16"], rows, col_w=[2, 1, 1])
-    caption(s, "Static cost measured with torch's FLOP counter; VRAM and throughput "
-               "measured on the real training workload, RTX 4060 8 GB.",
-            top=__import__("pptx").util.Inches(5.4))
-    takeaway(s, "Any accuracy advantage has to be read against ~3.6× the parameters "
-                "and ~4× the compute.")
+    sl_result_efficiency(prs, f)
+    sl_deployment(prs, f)
 
     s = slide(prs, "Next", kicker="Plan")
     bullets(s, [
-        (0, "Evaluation battery over all 24 checkpoints — 42 inference passes each", True),
-        (1, "corruption robustness: Gaussian noise, blur, JPEG × 5 severities", False),
-        (1, "frequency sensitivity: ideal low/high-pass sweeps and band-limited noise", False),
+        (0, "The evaluation battery over all 24 trained models — 42 tests each", True),
+        (1, "damaged images: sensor noise, blur, compression, at 5 severities", False),
+        (1, "frequency filtering, to find what each model relies on", False),
         (0, "Then the mechanism question: does frequency behaviour explain the "
             "robustness differences?", True),
     ])
@@ -247,368 +1035,246 @@ def deck_progress_02(f):
 
 def deck_progress_03(f):
     prs = new_deck()
-    I = __import__("pptx").util.Inches
     title_slide(prs, "Progress Update 3", "Robustness and frequency battery complete",
                 [COURSE + " · " + TITLE, STUDENT, GUIDE])
-
-    s = slide(prs, "What the battery does to every checkpoint", kicker="Method")
-    bullets(s, [
-        (0, "42 inference passes per checkpoint over the frozen test set:", True),
-        (1, "clean · 3 corruption families × 5 ImageNet-C severities", False),
-        (1, "ideal low-pass and high-pass sweeps over 10 cutoff radii", False),
-        (1, "band-limited fixed-energy noise over 6 frequency annuli", False),
-        (0, "Corruptions are generated on the fly and seeded per (image, severity), so "
-            "both architectures are scored on byte-identical degraded pixels — and "
-            "nothing is written to disk.", True),
-    ], height=I(2.4))
-    if f.figure("corruption_ladder.png"):
-        picture(s, f.figure("corruption_ladder.png"), top=I(3.75), max_h=I(3.0))
-
-    s = slide(prs, "Corruption robustness", kicker="Result")
-    if f.figure("fig_corruption.png"):
-        picture(s, f.figure("fig_corruption.png"), top=I(1.7), max_h=I(4.3))
-    rows = [[{"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m],
-             f.top1_str(m, 100), f.corruption_drop(m)] for m in ("resnet50", "vit_b16")]
-    table(s, ["Model", "Clean top-1 (f100)", "Mean relative drop under corruption"],
-          rows, top=I(5.35) if f.figure("fig_corruption.png") else I(1.9), col_w=[1, 1.2, 1.6])
+    sl_how_corruption(prs, f)
+    sl_result_corruption(prs, f)
+    sl_what_is_frequency(prs, f)
 
     s = slide(prs, "How the frequency probes are built", kicker="Method")
     bullets(s, [
-        (0, "Ideal (brick-wall) radial masks applied to the 2-D DFT of each image, "
-            "before normalisation.", True),
-        (0, "Low-pass and high-pass at the same radius are exact complements: the "
-            "implementation's self-test asserts that they reconstruct the original "
-            "image to 4×10⁻⁷.", False),
-        (0, "Band-limited noise is rescaled to a constant spatial RMS after "
-            "band-limiting, so band position is the only variable — otherwise the "
-            "curve would just measure how many DFT bins an annulus contains.", False),
-    ], height=I(2.0))
+        (0, "Each image is converted into its frequency components, some are switched "
+            "off, and it is converted back.", True),
+        (0, "Correctness checks built into the code, not asserted:", False),
+        (1, "at the widest setting the filter must do nothing — and the model's score "
+            "there matches its normal score exactly", False),
+        (1, "the low-pass and high-pass halves must add back up to the original image — "
+            "verified to seven decimal places", False),
+        (1, "every noise band must carry identical energy, so the curve measures the "
+            "model and not the noise", False),
+    ], top=I(1.6), height=I(2.1), size=14)
     if f.figure("fft_construction.png"):
-        picture(s, f.figure("fft_construction.png"), top=I(3.5), max_h=I(2.2))
+        picture(s, f.figure("fft_construction.png"), top=I(3.85), max_h=I(2.5))
+    notes(s, """
+For a technical audience this is the slide that establishes the analysis is sound.
+For a general audience, the message is simply: we did not trust this code, we tested
+it, and here are the tests.
 
-    s = slide(prs, "What a cutoff actually does to an image", kicker="Method")
-    if f.figure("frequency_lowpass_ladder.png"):
-        picture(s, f.figure("frequency_lowpass_ladder.png"), top=I(1.7), max_h=I(4.6))
-    caption(s, "Ideal low-pass sweep. At the largest radius the mask covers every "
-               "populated DFT bin, so the filter is the identity — a free correctness "
-               "check built into the sweep.", top=I(6.5))
+The strongest of the three is the first. At the widest filter setting the operation
+is mathematically guaranteed to change nothing at all. So the model's accuracy there
+must exactly equal its ordinary accuracy. It does — to four decimal places, on real
+trained models. If there were a bug in the filtering, that would almost certainly
+have broken.
+""")
 
-    s = slide(prs, "Frequency sensitivity", kicker="Result")
-    if f.figure("fig_frequency.png"):
-        picture(s, f.figure("fig_frequency.png"), top=I(1.7), max_h=I(4.2))
-    rows = [[{"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m],
-             f.freq_auc(m, "lp"), f.freq_auc(m, "hp"), f.band_weakness(m)]
-            for m in ("resnet50", "vit_b16")]
-    table(s, ["Model", "Low-pass AUC", "High-pass AUC", "Most damaging noise band"],
-          rows, top=I(5.3), col_w=[1, 1, 1, 1.6])
+    sl_result_frequency(prs, f)
 
     s = slide(prs, "Next", kicker="Plan")
     bullets(s, [
-        (0, "The interaction figure: does frequency reliance shift with training-set "
-            "size, and does it predict the low-data robustness ordering?", True),
-        (0, "Error overlap — are the two families making the same mistakes, or "
-            "different ones?", False),
-        (0, "Calibration and the deployment table, then the mid-semester report.", False),
+        (0, "The interaction: does frequency reliance shift with training-set size, and "
+            "does it predict low-data robustness?", True),
+        (0, "Error overlap — are the two families making the same mistakes?", False),
+        (0, "Calibration and deployment cost, then the mid-semester report.", False),
     ])
     save(prs, OUT / "progress_03_robustness.pptx")
 
 
 def deck_progress_04(f):
     prs = new_deck()
-    I = __import__("pptx").util.Inches
-    title_slide(prs, "Progress Update 4", "Mechanism analysis complete — ready for "
-                "the mid-semester review",
+    title_slide(prs, "Progress Update 4", "Mechanism analysis complete — ready for the "
+                "mid-semester review",
                 [COURSE + " · " + TITLE, STUDENT, GUIDE])
-
-    s = slide(prs, "The contribution: frequency reliance × data fraction", kicker="Novelty")
-    if f.figure("fig_frequency_interaction.png"):
-        picture(s, f.figure("fig_frequency_interaction.png"), top=I(1.7), max_h=I(4.2))
-    bullets(s, [
-        (0, "Prior work establishes that CNNs and ViTs differ in frequency response at "
-            "full scale. The question here is whether that dependence SHIFTS as the "
-            "transfer-learning data budget shrinks — and whether it predicts which "
-            "family degrades more gracefully.", True)],
-        top=I(6.0), size=14, height=I(1.1))
-
-    s = slide(prs, "Are they making the same mistakes?", kicker="Error overlap")
-    o = f.overlap_at(100)
-    if o:
-        rows = [["Cohen's κ on correctness", f"{o['kappa']:.3f}"],
-                ["Both models wrong", f"{o['both_wrong']*100:.1f}%"],
-                ["…and giving the SAME wrong label", f"{o['same_wrong']*100:.1f}%"],
-                ["Oracle top-1 (either model right)", f"{o['oracle']*100:.2f}%"]]
-    else:
-        rows = [["(pending)", ""]]
-    table(s, ["At 100% data", "Value"], rows, col_w=[2.2, 1])
-    if f.figure("fig_error_overlap.png"):
-        picture(s, f.figure("fig_error_overlap.png"), top=I(3.5), max_h=I(3.0))
-    caption(s, "κ corrects agreement for chance: two models of this accuracy agree "
-               "~79% of the time by luck alone.", top=I(6.7))
-
-    s = slide(prs, "Calibration", kicker="Reliability")
-    if f.figure("fig_calibration.png"):
-        picture(s, f.figure("fig_calibration.png"), top=I(1.7), max_h=I(4.2))
-    rows = [[{"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m], f.ece(m, 100)]
-            for m in ("resnet50", "vit_b16")]
-    table(s, ["Model", "ECE at f100 (15 bins)"], rows, top=I(5.4), col_w=[1, 1.4])
+    sl_contribution(prs, f)
+    sl_overlap(prs, f)
+    sl_calibration(prs, f)
 
     s = slide(prs, "Status against the plan", kicker="Progress")
     av = f.available()
-    def mark(b):
-        return "Complete" if b else "Pending"
-    rows = [["Caltech-256 full fine-tuning, both models × 4 fractions × 3 seeds",
+    mark = lambda b: "Complete" if b else "Pending"
+    rows = [["Caltech-256 fine-tuning, both models × 4 sizes × 3 seeds",
              mark(av["resnet_fullft"] and av["vit_fullft"])],
-            ["Linear probes on cached features", mark(av["probes"])],
-            ["Evaluation battery (corruption + frequency)", mark(av["battery"])],
+            ["Linear probes on frozen features", mark(av["probes"])],
+            ["Evaluation battery (damage + frequency)", mark(av["battery"])],
             ["Error overlap · calibration · deployment", mark(av["overlap"])],
             ["Food-101 cross-dataset confirmation", mark(av["food101"])]]
     table(s, ["Committed work", "Status"], rows, col_w=[3.4, 1])
     bullets(s, [(0, f"Total compute: {f.gpu_hours()} GPU-hours on one 8 GB laptop GPU.", False),
-                (0, "Everything is reproducible from the public repository; every figure "
-                    "and table is generated by script from a single results table.", True)],
+                (0, "Everything reproducible from the public repository; every figure and "
+                    "table generated by script from a single results file.", True)],
             top=I(4.6))
     save(prs, OUT / "progress_04_mechanism.pptx")
 
 
-def _schedule_slide(prs, f):
-    """A protocol bug worth presenting: it would have inverted the headline."""
-    I = __import__("pptx").util.Inches
-    sf = f.schedule_finding()
-    s = slide(prs, "A protocol bug that would have inverted the result",
-              kicker="Methodology finding")
-    if not sf:
-        bullets(s, [(0, "(archive not present)", False)])
-        return s
-    rows = []
-    for m, name in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16")):
-        r = sf[m]
-        cell = lambda k: f"{r[k][0]*100:.2f}" if r.get(k) else "—"
-        hit, tot = sf["early_stop_counts"][m]
-        rows.append([name, cell("truncated"), cell("annealed_8"), cell("annealed_15"),
-                     f"{hit}/{tot}"])
-    table(s, ["Model", "30-ep TRUNCATED", "8-ep annealed", "15-ep annealed",
-              "runs early-stopped"], rows, col_w=[1.2, 1.3, 1.2, 1.2, 1.3])
-    bullets(s, [
-        (0, "The declared 30-epoch cosine plus patience-5 early stopping were fighting "
-            "each other: at epoch 8 the learning rate is still ~9e-5, so validation sits "
-            "on a noisy plateau and patience expired BEFORE the annealing phase that "
-            "converges the model.", True),
-        (0, "The cost was 15x larger for the transformer (2.7-3.0 pp vs 0.2 pp) — not a "
-            "neutral protocol choice, but a silent bias in exactly the comparison this "
-            "project exists to make.", False),
-        (0, "Under the truncated schedule the measured gap decayed and reversed "
-            "(+1.38 → +0.91 → −0.45 pp). Under the corrected one it never crosses. Same "
-            "data, same seeds; the only difference is whether the cosine was allowed to "
-            "finish.", True),
-        (0, "Fixed before the final matrix, both arms rerun identically, superseded runs "
-            "archived rather than deleted.", False),
-    ], top=I(3.15), size=15)
-    return s
-
-
-def _core_story(prs, f, final=False):
-    """Slides shared by the mid-sem and end-sem decks."""
-    I = __import__("pptx").util.Inches
-    s = slide(prs, "Motivation", kicker="1 · Problem")
-    bullets(s, [(0, PROBLEM, False),
-                (0, "Most published comparisons vary pre-training data, augmentation "
-                    "recipe, schedule and compute all at once — so an architecture "
-                    "conclusion is not actually isolated.", True),
-                (0, "This project fixes everything except the architecture, and then "
-                    "asks how the two families behave, not merely which scores higher.", False)],
-            size=16)
-
-    _protocol_slide(prs, f)
-
-    s = slide(prs, "Experimental design", kicker="3 · Method")
-    d = f.dataset_facts()
-    rows = [["Caltech-256 full fine-tune", "2 models × {10,25,50,100}% × 3 seeds", "24"],
-            ["Caltech-256 linear probe", "same grid, cached frozen features", "24"],
-            ["Declared LR sweeps", "3 LRs × 2 models, f100, seed 0", "6"],
-            ["Food-101 confirmation", "2 models × {100,25}% × 1 seed", "4"]]
-    table(s, ["Block", "Design", "Runs"], rows, col_w=[1.6, 2.6, 0.6])
-    bullets(s, [
-        (0, f"Caltech-256: {d['total']:,} images, {d['classes']} classes "
-            f"(clutter excluded), 70/10/20 stratified — {d['train_f100']:,} train / "
-            f"{d['val']:,} val / {d['test']:,} frozen test", False),
-        (0, "Every checkpoint then passes one evaluation battery: 42 inference passes "
-            "covering clean metrics, corruption robustness and frequency sensitivity.", True),
-    ], top=I(4.2))
-
-    _schedule_slide(prs, f)
-
-    s = slide(prs, "Data efficiency", kicker="4 · Result")
-    _eff_table(f, s, regimes=("fullft", "linprobe"))
-    if f.figure("fig_data_efficiency.png"):
-        picture(s, f.figure("fig_data_efficiency.png"), top=I(3.5), max_h=I(2.8))
-    caption(s, "Mean ± SD over 3 seeds on 5,952 frozen test images.")
-
-    s = slide(prs, "Corruption robustness", kicker="5 · Result")
-    if f.figure("fig_corruption.png"):
-        picture(s, f.figure("fig_corruption.png"), top=I(1.7), max_h=I(4.4))
-    caption(s, "Top-1 vs ImageNet-C severity, f100. Identical corrupted pixels for "
-               "both architectures.", top=I(6.4))
-
-    s = slide(prs, "Frequency sensitivity — the mechanism", kicker="6 · Result")
-    if f.figure("fig_frequency.png"):
-        picture(s, f.figure("fig_frequency.png"), top=I(1.7), max_h=I(4.2))
-    rows = [[{"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m],
-             f.freq_auc(m, "lp"), f.freq_auc(m, "hp"), f.band_weakness(m)]
-            for m in ("resnet50", "vit_b16")]
-    table(s, ["Model", "Low-pass AUC", "High-pass AUC", "Weakest noise band"], rows,
-          top=I(5.3), col_w=[1, 1, 1, 1.4])
-
-    s = slide(prs, "Frequency reliance × data fraction", kicker="7 · Contribution")
-    if f.figure("fig_frequency_shift.png"):
-        picture(s, f.figure("fig_frequency_shift.png"), top=I(1.6), max_h=I(3.9))
-    ps = f.profile_shift()
-    if ps and "resnet50" in ps and "vit_b16" in ps:
-        r, v = ps["resnet50"], ps["vit_b16"]
-        ratio = r["max_abs"] / v["max_abs"] if v["max_abs"] else float("nan")
-        bullets(s, [
-            (0, f"ResNet-50's spectral robustness profile MOVES with the data budget — "
-                f"largest shift {r['max_abs']:+.3f} in the {r['max_band']} bin band. "
-                f"ViT-B/16's is essentially invariant ({v['max_abs']:+.3f}). "
-                f"A {ratio:.0f}x difference.", True),
-            (0, "Read plainly: the CNN has to LEARN high-frequency robustness from the "
-                "fine-tuning data. The transformer arrives with it from pre-training and "
-                "does not need the data to acquire it — which is exactly why its "
-                "advantage is largest when data is scarce.", False),
-        ], top=I(5.6), size=13, height=I(1.5))
-    else:
-        bullets(s, [(0, "(battery incomplete at both ends of the fraction range)", False)],
-                top=I(5.7), size=13)
-    takeaway(s, "Prior work shows the two families differ in frequency response. "
-                "This shows that difference is data-dependent for one family and not "
-                "the other.", top=I(6.85))
-
-    s = slide(prs, "Supporting view: low-pass curves per fraction",
-              kicker="7b · Contribution")
-    if f.figure("fig_frequency_interaction.png"):
-        picture(s, f.figure("fig_frequency_interaction.png"), top=I(1.7), max_h=I(4.3))
-    caption(s, "Ideal low-pass accuracy-vs-cutoff, one panel per training fraction. "
-               "The same interaction seen from the filtering side.", top=I(6.3))
-
-    s = slide(prs, "Error overlap and calibration", kicker="8 · Supporting")
-    o = f.overlap_at(100)
-    rows = ([["Cohen's κ on correctness", f"{o['kappa']:.3f}"],
-             ["Both wrong", f"{o['both_wrong']*100:.1f}%"],
-             ["Same wrong label | both wrong", f"{o['same_wrong']*100:.1f}%"],
-             ["Oracle top-1", f"{o['oracle']*100:.2f}%"]] if o else [["(pending)", ""]])
-    rows += [[f"ECE — ResNet-50 / ViT-B/16", f"{f.ece('resnet50')} / {f.ece('vit_b16')}"]]
-    table(s, ["At f100", "Value"], rows, col_w=[2.4, 1])
-    if f.figure("fig_calibration.png"):
-        picture(s, f.figure("fig_calibration.png"), top=I(3.9), max_h=I(2.7))
-
-    s = slide(prs, "Deployment cost", kicker="9 · Cost")
-    if f.figure("fig_deployment.png"):
-        picture(s, f.figure("fig_deployment.png"), top=I(1.7), max_h=I(3.7))
-    rd, vd = f.deployment_row("resnet50"), f.deployment_row("vit_b16")
-    if rd and vd:
-        table(s, ["", "ResNet-50", "ViT-B/16"],
-              [["Parameters (M)", f"{rd.get('params_m',0):.1f}", f"{vd.get('params_m',0):.1f}"],
-               ["GMACs @224", f"{rd.get('gmacs',0):.2f}", f"{vd.get('gmacs',0):.2f}"]],
-              top=I(5.6), col_w=[2, 1, 1])
-
-
+# ==========================================================================
+# review decks
+# ==========================================================================
 def deck_midsem(f):
     prs = new_deck()
-    I = __import__("pptx").util.Inches
     title_slide(prs, TITLE, "Mid-semester review",
                 [COURSE + " · Mid-Semester Evaluation", STUDENT, GUIDE])
+    notes(prs.slides[-1], """
+Presenting to a mixed audience. Assume the supervisor knows the field and that
+others in the room may not. The deck is built so the vocabulary needed for each
+result appears before that result does.
+
+Timing: about 15 minutes for the story, leaving room for questions. If short on
+time, the four slides that must survive are the two-models explainer, data
+efficiency, the frequency explainer, and the contribution.
+""")
 
     s = slide(prs, "At a glance", kicker="Summary")
-    av = f.available()
     bullets(s, [
-        (0, f"{f.n_runs()} training runs complete on Caltech-256 across two "
-            f"architectures, four data fractions and three seeds.", True),
-        (0, f"Evaluation battery run on {f.battery_done()} checkpoints — 42 inference "
-            f"passes each.", False),
-        (0, f"Total compute: {f.gpu_hours()} GPU-hours on a single RTX 4060 8 GB laptop.", False),
-        (0, "Every figure and table in this deck is generated by script from one "
-            "results table; no number is entered by hand.", True),
+        (0, f"{f.n_runs()} training runs on Caltech-256 across two architectures, four "
+            f"data sizes and three random seeds.", True),
+        (0, f"Every trained model put through an identical 42-test battery — "
+            f"{f.battery_done()} of 24 complete.", False),
+        (0, f"Total compute: {f.gpu_hours()} GPU-hours on a single laptop graphics card.", False),
+        (0, "Every figure and number here is generated by script from one results file. "
+            "Nothing is entered by hand.", True),
         (0, "Public repository with per-run configs, logs, metrics and per-image "
-            "prediction tables: github.com/KPraveenRaj/cnn-vs-vit", False),
+            "predictions: github.com/KPraveenRaj/cnn-vs-vit", False),
     ])
+    notes(s, """
+Set expectations. This is a completed controlled study, not a progress report: the
+main experiment is finished, all twenty-four models trained, all evaluated.
+
+The compute number is worth saying aloud — the whole study ran on one laptop
+graphics card. Architecture comparisons are usually done on clusters, so this is
+unusually reproducible, and that was a deliberate constraint rather than a
+limitation.
+""")
+
     _core_story(prs, f)
 
-    s = slide(prs, "What remains", kicker="10 · Plan")
+    s = slide(prs, "What remains", kicker="Plan")
     av = f.available()
     bullets(s, [
-        (0, "Food-101 cross-dataset confirmation (the declared confirmation block)",
-         not av["food101"]),
-        (0, "Extended qualitative analysis: attention maps and Grad-CAM, if time permits", False),
+        (0, "Food-101 cross-dataset confirmation — does the finding hold on a second, "
+            "larger, finer-grained dataset?", not av["food101"]),
+        (0, "Extended qualitative analysis (attention maps), if time permits", False),
         (0, "Final report and end-semester presentation", False),
-        (0, "Phase-II direction (EC790): generative / restoration-oriented vision "
-            "transformers, building on the frequency analysis developed here.", True),
+        (0, "Phase II (EC790): generative and restoration-oriented vision transformers "
+            "— the frequency tooling built here transfers directly, because image "
+            "restoration is explicitly a frequency problem.", True),
     ])
-    takeaway(s, "The minimum viable thesis — data efficiency plus corruption robustness "
-                "on Caltech-256, both models, three seeds — is complete.")
+    notes(s, """
+Be clear that the main study is complete and what remains is confirmation and
+writing, not core experiments.
+
+On Phase II: the connection is genuine rather than decorative. Image restoration —
+denoising, deblurring, super-resolution — is fundamentally about recovering
+frequency content that has been lost or corrupted. The measurement tools built in
+this phase apply directly.
+""")
+
+    sl_summary(prs, f)
     save(prs, OUT / "midsem_review.pptx")
 
 
 def deck_endsem(f):
     prs = new_deck()
-    I = __import__("pptx").util.Inches
     title_slide(prs, TITLE, "End-semester review — Phase I complete",
                 [COURSE + " · End-Semester Evaluation", STUDENT, GUIDE])
 
     s = slide(prs, "What this project established", kicker="Summary")
     bullets(s, [
-        (0, "Under one controlled protocol, a CNN and a ViT of the same pre-training "
-            "source were compared on data efficiency, corruption robustness and "
+        (0, "Under one controlled protocol, a CNN and a Vision Transformer of identical "
+            "pre-training were compared on data efficiency, robustness to damage, and "
             "frequency sensitivity.", True),
         (0, f"{f.n_runs()} runs · {f.battery_done()} full evaluation batteries · "
             f"{f.gpu_hours()} GPU-hours on one 8 GB laptop GPU.", False),
-        (0, "The frequency analysis provides a mechanism for the robustness results "
+        (0, "The frequency analysis provides a MECHANISM for the robustness results "
             "rather than only reporting them.", True),
-        (0, "Everything is reproducible from a public repository, generated end to end "
-            "by script.", False),
+        (0, "Everything reproducible from a public repository, generated end to end by "
+            "script.", False),
     ])
     _core_story(prs, f, final=True)
 
-    s = slide(prs, "Cross-dataset confirmation: Food-101", kicker="10 · Confirmation")
-    if f.available()["food101"]:
+    s = slide(prs, "Does a second dataset agree?", kicker="17 · Confirmation")
+    rep = REPO_ROOT / "results" / "tables" / "replication.csv"
+    if rep.exists():
+        import pandas as pd
+        rdf = pd.read_csv(rep)
         rows = []
-        for m in ("resnet50", "vit_b16"):
-            rows.append([{"resnet50": "ResNet-50", "vit_b16": "ViT-B/16"}[m],
-                         f.top1_str(m, 25, dataset="food101"),
-                         f.top1_str(m, 100, dataset="food101")])
-        table(s, ["Model", "25% data", "100% data"], rows, col_w=[1.4, 1, 1])
-        bullets(s, [(0, "Confirmation only — one seed, full fine-tuning. The question is "
-                        "whether the Caltech-256 ordering transfers to a second, larger "
-                        "and finer-grained dataset.", True)], top=I(3.4))
+        for _, r in rdf.iterrows():
+            a = r["agrees"]
+            v = "pending" if pd.isna(a) else ("replicates" if a else "differs")
+            rows.append([str(r["claim"])[:52], str(r["caltech256"])[:18],
+                         str(r["food101"])[:18], v])
+        table(s, ["Finding", "Caltech-256", "Food-101", "Verdict"], rows,
+              col_w=[2.6, 1.1, 1.1, 0.9], size=11)
     else:
-        bullets(s, [
-            (0, "Food-101 was the declared first item to cut under time pressure, and "
-                "the project plan named it as such from the outset.", True),
-            (0, "The Caltech-256 result stands on its own: two architectures, four data "
-                "fractions, three seeds, one protocol, full evaluation battery.", False),
-            (0, "Recording the cut as a scope decision is more honest than reporting a "
-                "rushed single-seed result.", False)])
-
-    s = slide(prs, "Limitations, stated plainly", kicker="11 · Discussion")
+        bullets(s, [(0, "(Food-101 confirmation pending)", False)])
     bullets(s, [
-        (0, "One CNN and one ViT: archetypes, not the whole families. Conclusions are "
-            "about these two representatives under this protocol.", True),
-        (0, "One primary dataset, 256 classes, ImageNet-adjacent — Caltech-256 overlaps "
-            "the pre-training distribution, which flatters both models equally.", False),
-        (0, "Ideal brick-wall filters ring (Gibbs); this is standard for the analysis "
-            "but it is a distortion of its own, and is reported as such.", False),
-        (0, "Linear probes use no train-time augmentation, a declared and symmetric "
-            "difference from the fine-tuning regime.", False),
+        (0, "Food-101 runs ONE seed by design — it supports statements about direction, "
+            "not about statistical significance.", True),
+        (0, "A finding that holds on one dataset and not the other would indicate "
+            "dataset dependence, NOT an error in the first measurement.", False),
+    ], top=I(5.3), size=13, height=I(1.2))
+    notes(s, """
+Handle this slide carefully, because it is where an examiner may push.
+
+Food-101 is a confirmation dataset: 101,000 photographs of food across 101
+categories. It is larger than Caltech-256 and finer-grained — distinguishing types
+of soup is harder than distinguishing a soup from a bicycle.
+
+Two cautions to state before anyone else does. First, it runs a single random seed
+by design, so it tells us about direction but cannot support significance claims;
+there is no spread to test against. Second, and more important: if something does
+NOT replicate, that is not evidence the Caltech result was wrong. The Caltech result
+rests on its own internal validity — a frozen test set, three seeds, one protocol.
+Disagreement would mean the finding is dataset-dependent, which is itself a
+legitimate and quite interesting result: it would say the answer depends on how
+close your task sits to the pre-training data.
+
+The thing that WOULD invalidate the work is a protocol bug, which is why the
+schedule interaction earlier was worth stopping everything to fix.
+""")
+
+    s = slide(prs, "Limitations, stated plainly", kicker="18 · Discussion")
+    bullets(s, [
+        (0, "One CNN and one transformer are archetypes, not whole families. The "
+            "conclusions are about these two representatives under this protocol.", True),
+        (0, "Caltech-256 overlaps the ImageNet pre-training distribution. That flatters "
+            "both models — but it flatters them equally.", False),
+        (0, "The frequency filters use a hard cutoff, which causes visible ringing. It "
+            "is standard for this analysis and makes the cutoff unambiguous, but it is "
+            "a distortion of its own.", False),
+        (0, "Linear probes use no training-time augmentation — a declared difference "
+            "from fine-tuning, applied identically to both models.", False),
         (0, "Three seeds bound run-to-run variance, not dataset variance.", False),
-    ])
+        (0, "One shared training length was used for both models; the transformer's "
+            "optimum at full data sits at a shorter budget. Documented as a "
+            "sensitivity, not hidden.", False),
+    ], size=14)
+    notes(s, """
+Volunteering limitations is more persuasive than being caught by them, and every
+item here is one an examiner could otherwise raise.
 
-    s = slide(prs, "Phase II — EC790", kicker="12 · Next")
+The most important is the first. We compared ONE convolutional network and ONE
+transformer. They are standard representatives, but a different pair might behave
+differently. Nothing here licenses a sweeping claim about all CNNs and all
+transformers.
+
+The second is about the dataset. Caltech-256 contains everyday objects, which
+overlap heavily with what both models saw during pre-training. That makes the task
+easier than a genuinely novel domain like medical imaging — but it makes it equally
+easier for both, so the comparison stays fair even though the absolute numbers are
+flattering.
+""")
+
+    s = slide(prs, "Phase II — EC790", kicker="19 · Next")
     bullets(s, [
-        (0, "Direction: generative / restoration-oriented vision transformers.", True),
-        (0, "The frequency machinery built here transfers directly: restoration is "
-            "explicitly a frequency problem, and this project already has validated "
-            "tooling for measuring what a model does per frequency band.", False),
-        (0, "The controlled-protocol discipline carries over — the same insistence that "
-            "one factor varies at a time.", False),
+        (0, "Direction: generative and restoration-oriented vision transformers.", True),
+        (0, "Image restoration — denoising, deblurring, super-resolution — is "
+            "explicitly a frequency problem: it is about recovering detail that was "
+            "lost or corrupted.", False),
+        (0, "This phase built and validated tooling that measures exactly what a model "
+            "does band by band. It transfers directly.", True),
+        (0, "The controlled-protocol discipline carries over too: vary one factor at a "
+            "time, and declare what you tuned.", False),
     ])
+    sl_summary(prs, f, final=True)
     save(prs, OUT / "endsem_review.pptx")
 
 
