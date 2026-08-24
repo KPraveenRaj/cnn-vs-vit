@@ -117,12 +117,73 @@ def _results_section(f):
         A("")
         A("**How this differs from prior work.** Park & Kim (2022) establish that the "
           "two families differ in frequency response, at full scale. What is new here "
-          "is that the difference is *itself data-dependent* for one family and not "
-          "the other — visible only under a protocol that varies the data budget while "
-          "holding everything else fixed.")
+          "is that the difference is *itself data-dependent* — visible only under a "
+          "protocol that varies the data budget while holding everything else fixed.")
         A("")
         A("![Profile shift](results/figures/fig_frequency_shift.png)")
         A("")
+        cv = f.contribution_verdict()
+        if cv and cv["any_tested"] and not cv["all_replicate"]:
+            A("#### ⚠ This result did NOT reproduce on Food-101")
+            A("")
+            A("| test | Caltech-256 | Food-101 |")
+            A("|---|---|---|")
+            for r in cv["rows"]:
+                A(f"| {r['claim']} | {r['caltech']} | {r['food101']} |")
+            A("")
+            A("Stated plainly because it bounds how far the claim can be taken. Three "
+              "qualifications separate what was measured from what can be concluded:")
+            A("")
+            A("1. Food-101 runs **one seed**, so a single noisy band can dominate a "
+              "maximum-over-bands statistic and no significance can be claimed.")
+            A("2. Caltech's shift is **structured** — it grows monotonically with "
+              "frequency. Food-101's bounces in sign, which is what one seed of noise "
+              "looks like.")
+            A("3. In the high band specifically, both Food-101 values sit near zero: "
+              "*neither model moved*, rather than *the effect reversed*.")
+            A("")
+            A("The fractions also match in proportion but not absolute size — "
+              "Food-101's f10 is 7,070 images against Caltech's 2,196 — so the same "
+              "nominal fraction is a substantially larger training set there.")
+            A("")
+        inv = f.invariance()
+        if inv:
+            A("#### What does survive both datasets")
+            A("")
+            A("Accuracy retained under high-frequency band noise, relative to each "
+              "run's own clean accuracy, in every condition measured:")
+            A("")
+            A("| model | Caltech-256 | Food-101 | range | spread |")
+            A("|---|---|---|---|---|")
+            for m, n in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16")):
+                dd = inv[m]
+                cells = []
+                for ds in ("caltech256", "food101"):
+                    got = [f"f{fr}: {v:.3f}" for (d2, fr), v in sorted(dd["values"].items())
+                           if d2 == ds]
+                    cells.append("; ".join(got) if got else "—")
+                A(f"| **{n}** | {cells[0]} | {cells[1]} | "
+                  f"{dd['min']:.3f}–{dd['max']:.3f} | **{dd['range']:.1f}×** |")
+            A("")
+            A(f"ViT-B/16's spectral robustness stays within a "
+              f"{inv['vit_b16']['range']:.2f}× spread across every dataset and data "
+              f"budget tested. ResNet-50's varies over {inv['resnet50']['range']:.1f}×. "
+              f"On Food-101 the CNN retains under a tenth of its accuracy against "
+              f"high-frequency noise at *every* data size and never improves; on "
+              f"Caltech it improves substantially.")
+            A("")
+            A("**So the *direction* of the effect is dataset-specific, while the "
+              "*contrast in stability* between the two families is not.** The "
+              "contribution is therefore stated as: the transformer's spectral "
+              "robustness is invariant to task and data budget; the convolutional "
+              "network's is contingent on both.")
+            A("")
+            A("**Provenance, stated honestly:** this broader framing was formed after "
+              "examining both datasets, not predicted in advance. It is a hypothesis "
+              "with support across every condition measured here, not a pre-registered "
+              "result. Confirming it would require a third dataset — a concrete "
+              "Phase-II objective.")
+            A("")
 
     o = f.overlap_at(100)
     if o:
@@ -178,8 +239,51 @@ def _results_section(f):
           "in the first measurement — the Caltech result rests on its own internal "
           "validity (frozen split, three seeds, one protocol).")
         A("")
+    L.append(AUDIT_NOTE)
     return "\n".join(L)
 
+
+AUDIT_NOTE = """
+### 9.9 Audit: what an independent check found
+
+The findings were audited against the literature and against 463 automated
+internal-consistency checks. No computational errors were found. Three
+qualifications emerged that bound what can be claimed, and they are stated here
+rather than buried:
+
+**1. Pre-training recipe is not controlled — only pre-training data.** Both
+checkpoints are ImageNet-1k, which is the control most published comparisons get
+wrong and which this project deliberately gets right. But they come from
+different recipes: ResNet-50 from *ResNet strikes back* (LAMB, BCE loss,
+mixup/CutMix, RandAugment, ~600 epochs) and ViT-B/16 from *AugReg* (strong
+augmentation plus heavy regularization). Augmentation strength during
+pre-training is known to affect corruption robustness substantially. So the
+robustness and frequency results may partly reflect recipe rather than
+architecture. The defensible claim is about **these two released checkpoints,
+fine-tuned identically** — not about the two families in general. Controlling it
+would require pre-training both from scratch under one recipe, which is far
+beyond a laptop GPU.
+
+**2. One published result points the other way.** Bhojanapalli et al. (2021)
+report that with ImageNet-1k pre-training specifically, ViTs were *less* robust
+than CNNs on ImageNet-C, converging only with ImageNet-21k or JFT-300M. This
+project finds the opposite after transfer. The settings differ — they evaluate
+in-domain, this evaluates after fine-tuning on a different dataset — but the
+discrepancy is recorded rather than ignored.
+
+**3. Constant noise RMS is not constant signal-to-noise ratio.** Natural images
+have approximately 1/f² power spectra, so the same noise RMS is a much larger
+*relative* perturbation at high frequency where there is little signal. Both
+models face identical noise, so the model-versus-model comparison holds; but
+reading a curve minimum as a pure measure of "which band this model relies on" is
+not licensed by the design.
+
+Consistency with Park & Kim (2022) was confirmed on four independent measurements
+— though note that they characterise what the *operations* do to feature maps
+while this measures *input-frequency robustness*. Related, not identical.
+
+Full audit: `AUDIT.md`.
+"""
 
 PITFALLS = """
 ### 10.1 The learning-rate schedule fought the early-stopping rule

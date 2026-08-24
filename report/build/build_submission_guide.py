@@ -151,9 +151,16 @@ def main():
           f"concentrated at high frequency. ViT-B/16's is essentially invariant "
           f"({v['max_abs']:+.3f}). A {ratio:.0f}x difference.**")
         A("")
-        A("**How to say it:** the CNN has to *learn* high-frequency robustness from the "
-          "fine-tuning data. The transformer inherits a spectrally flat robustness "
-          "profile from pre-training and does not need downstream data to acquire it.")
+        cv0 = f.contribution_verdict()
+        if cv0 and cv0["any_tested"] and not cv0["all_replicate"]:
+            A("**⚠ Read the warning below before using this.** The numbers above are "
+              "Caltech-256 only, and this specific claim did **not** reproduce on "
+              "Food-101. The defensible version is in the box further down.")
+        else:
+            A("**How to say it:** the CNN has to *learn* high-frequency robustness from "
+              "the fine-tuning data. The transformer inherits a spectrally flat "
+              "robustness profile from pre-training and does not need downstream data "
+              "to acquire it.")
         A("")
         A("**Why this matters:** it is a *mechanism* for the data-efficiency result, "
           "not a restatement of it. ViT's advantage is largest exactly where the CNN "

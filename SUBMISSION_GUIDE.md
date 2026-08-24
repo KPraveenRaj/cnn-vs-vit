@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-24 18:10 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-24 18:38 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -60,7 +60,7 @@ Change in relative retention per frequency band between 10% and 100% training da
 
 **ResNet-50's spectral robustness profile moves with the data budget — +0.263 in the 88-159 bin band, and the movement is concentrated at high frequency. ViT-B/16's is essentially invariant (+0.022). A 12x difference.**
 
-**How to say it:** the CNN has to *learn* high-frequency robustness from the fine-tuning data. The transformer inherits a spectrally flat robustness profile from pre-training and does not need downstream data to acquire it.
+**⚠ Read the warning below before using this.** The numbers above are Caltech-256 only, and this specific claim did **not** reproduce on Food-101. The defensible version is in the box further down.
 
 **Why this matters:** it is a *mechanism* for the data-efficiency result, not a restatement of it. ViT's advantage is largest exactly where the CNN has least data from which to learn what the ViT already has. Three axes — accuracy, robustness, frequency — become one story.
 

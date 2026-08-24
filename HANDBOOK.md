@@ -757,9 +757,40 @@ ResNet-50's profile moves by 0.263 (concentrated at high frequency, band 88-159)
 
 **Interpretation.** The CNN must *learn* high-frequency robustness from the fine-tuning data. The transformer inherits a flat profile from pre-training and does not need downstream data to acquire it. That is a mechanism for the data-efficiency result rather than a restatement of it: the transformer's advantage is largest exactly where the CNN has least data from which to learn what the transformer already has.
 
-**How this differs from prior work.** Park & Kim (2022) establish that the two families differ in frequency response, at full scale. What is new here is that the difference is *itself data-dependent* for one family and not the other — visible only under a protocol that varies the data budget while holding everything else fixed.
+**How this differs from prior work.** Park & Kim (2022) establish that the two families differ in frequency response, at full scale. What is new here is that the difference is *itself data-dependent* — visible only under a protocol that varies the data budget while holding everything else fixed.
 
 ![Profile shift](results/figures/fig_frequency_shift.png)
+
+#### ⚠ This result did NOT reproduce on Food-101
+
+| test | Caltech-256 | Food-101 |
+|---|---|---|
+| ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.061 vs 0.110 (f10->f100) |
+| ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.011 vs +0.019 |
+| ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x range) | ViT 0.961-0.987 (1.03x range) |
+
+Stated plainly because it bounds how far the claim can be taken. Three qualifications separate what was measured from what can be concluded:
+
+1. Food-101 runs **one seed**, so a single noisy band can dominate a maximum-over-bands statistic and no significance can be claimed.
+2. Caltech's shift is **structured** — it grows monotonically with frequency. Food-101's bounces in sign, which is what one seed of noise looks like.
+3. In the high band specifically, both Food-101 values sit near zero: *neither model moved*, rather than *the effect reversed*.
+
+The fractions also match in proportion but not absolute size — Food-101's f10 is 7,070 images against Caltech's 2,196 — so the same nominal fraction is a substantially larger training set there.
+
+#### What does survive both datasets
+
+Accuracy retained under high-frequency band noise, relative to each run's own clean accuracy, in every condition measured:
+
+| model | Caltech-256 | Food-101 | range | spread |
+|---|---|---|---|---|
+| **ResNet-50** | f10: 0.615; f25: 0.788; f50: 0.854; f100: 0.878 | f10: 0.090; f25: 0.095; f100: 0.078 | 0.078–0.878 | **11.2×** |
+| **ViT-B/16** | f10: 0.977; f25: 0.983; f50: 0.987; f100: 0.987 | f10: 0.961; f25: 0.971; f100: 0.980 | 0.961–0.987 | **1.0×** |
+
+ViT-B/16's spectral robustness stays within a 1.03× spread across every dataset and data budget tested. ResNet-50's varies over 11.2×. On Food-101 the CNN retains under a tenth of its accuracy against high-frequency noise at *every* data size and never improves; on Caltech it improves substantially.
+
+**So the *direction* of the effect is dataset-specific, while the *contrast in stability* between the two families is not.** The contribution is therefore stated as: the transformer's spectral robustness is invariant to task and data budget; the convolutional network's is contingent on both.
+
+**Provenance, stated honestly:** this broader framing was formed after examining both datasets, not predicted in advance. It is a hypothesis with support across every condition measured here, not a pre-registered result. Confirming it would require a third dataset — a concrete Phase-II objective.
 
 ### 9.6 Error overlap and calibration
 
@@ -797,6 +828,47 @@ Total compute for the whole study: **15.2 GPU-hours** on one RTX 4060 Laptop GPU
 | ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x range) | ViT 0.961-0.987 (1.03x range) | **replicates** |
 
 Two cautions. Food-101 runs **one seed** by design, so it supports statements about direction, not significance. And a finding that holds on one dataset and not the other indicates *dataset dependence*, not an error in the first measurement — the Caltech result rests on its own internal validity (frozen split, three seeds, one protocol).
+
+
+### 9.9 Audit: what an independent check found
+
+The findings were audited against the literature and against 463 automated
+internal-consistency checks. No computational errors were found. Three
+qualifications emerged that bound what can be claimed, and they are stated here
+rather than buried:
+
+**1. Pre-training recipe is not controlled — only pre-training data.** Both
+checkpoints are ImageNet-1k, which is the control most published comparisons get
+wrong and which this project deliberately gets right. But they come from
+different recipes: ResNet-50 from *ResNet strikes back* (LAMB, BCE loss,
+mixup/CutMix, RandAugment, ~600 epochs) and ViT-B/16 from *AugReg* (strong
+augmentation plus heavy regularization). Augmentation strength during
+pre-training is known to affect corruption robustness substantially. So the
+robustness and frequency results may partly reflect recipe rather than
+architecture. The defensible claim is about **these two released checkpoints,
+fine-tuned identically** — not about the two families in general. Controlling it
+would require pre-training both from scratch under one recipe, which is far
+beyond a laptop GPU.
+
+**2. One published result points the other way.** Bhojanapalli et al. (2021)
+report that with ImageNet-1k pre-training specifically, ViTs were *less* robust
+than CNNs on ImageNet-C, converging only with ImageNet-21k or JFT-300M. This
+project finds the opposite after transfer. The settings differ — they evaluate
+in-domain, this evaluates after fine-tuning on a different dataset — but the
+discrepancy is recorded rather than ignored.
+
+**3. Constant noise RMS is not constant signal-to-noise ratio.** Natural images
+have approximately 1/f² power spectra, so the same noise RMS is a much larger
+*relative* perturbation at high frequency where there is little signal. Both
+models face identical noise, so the model-versus-model comparison holds; but
+reading a curve minimum as a pure measure of "which band this model relies on" is
+not licensed by the design.
+
+Consistency with Park & Kim (2022) was confirmed on four independent measurements
+— though note that they characterise what the *operations* do to feature maps
+while this measures *input-frequency robustness*. Related, not identical.
+
+Full audit: `AUDIT.md`.
 
 
 ---

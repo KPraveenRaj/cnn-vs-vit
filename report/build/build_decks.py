@@ -1243,6 +1243,41 @@ frequency content that has been lost or corrupted. The measurement tools built i
 this phase apply directly.
 """)
 
+    s = slide(prs, "Limitations and what we checked", kicker="Discussion")
+    bullets(s, [
+        (0, "Pre-training DATA is controlled (both ImageNet-1k) but pre-training RECIPE "
+            "is not. The robustness result is about these two public checkpoints, not "
+            "about CNNs and transformers in general.", True),
+        (0, "The frequency contribution held on Caltech-256 and did NOT reproduce on "
+            "Food-101. What survives both is the invariance contrast, not the "
+            "direction.", True),
+        (0, "One CNN, one transformer, one primary dataset that overlaps the "
+            "pre-training distribution — flattering to both, but equally.", False),
+        (0, "463 automated consistency checks over every result file; no computational "
+            "errors found. Findings cross-checked against Park & Kim (2022), Naseer et "
+            "al. (2021) and Bhojanapalli et al. (2021). Full audit in AUDIT.md.", True),
+    ])
+    notes(s, """
+Volunteering limitations is far more persuasive than being caught by them, and
+every item here is one an examiner could otherwise raise.
+
+The first is the one to lead with because it is the least obvious and the most
+honest. We controlled which DATA both models were pre-trained on — ImageNet-1k for
+both, which is the control most published comparisons get wrong. But the two
+downloadable checkpoints were trained with different recipes: different optimiser,
+different loss, different augmentation mix, different number of epochs. Since
+augmentation strength is known to affect robustness, part of the robustness gap
+could come from the recipe rather than the architecture. Fixing it would mean
+pre-training both models from scratch under one recipe, which is far beyond a
+laptop GPU. So the claim is scoped to these two checkpoints.
+
+The second is the non-replication, covered on its own slide.
+
+The last point is worth saying plainly: the results were audited rather than
+assumed. Four hundred and sixty-three automated checks over every result file,
+plus a cross-check of each claim against the published literature. No
+computational errors were found; what the audit did find were these scope limits.
+""")
     sl_summary(prs, f)
     save(prs, OUT / "midsem_review.pptx")
 
@@ -1309,6 +1344,19 @@ schedule interaction earlier was worth stopping everything to fix.
 
     s = slide(prs, "Limitations, stated plainly", kicker="18 · Discussion")
     bullets(s, [
+        (0, "Pre-training DATA is controlled (both ImageNet-1k) but pre-training RECIPE "
+            "is not — the two public checkpoints were trained with different "
+            "augmentation and optimisation recipes, and augmentation strength affects "
+            "robustness. So the robustness result is about these two checkpoints, not "
+            "about the families in general.", True),
+        (0, "One published study (Bhojanapalli et al. 2021) finds the opposite for "
+            "ImageNet-1k-pretrained ViTs evaluated in-domain. Our setting differs "
+            "(robustness after transfer), but the discrepancy is recorded.", False),
+        (0, "The band-noise probe holds noise energy constant, not signal-to-noise "
+            "ratio — natural images have far more energy at low frequency. Model-vs-"
+            "model comparison holds; 'which band it relies on' is more delicate.", False),
+        (0, "Qualitative saliency is not reported: attention rollout and Grad-CAM were "
+            "both measured degenerate for the ViT. No conclusion depends on a picture.", False),
         (0, "One CNN and one transformer are archetypes, not whole families. The "
             "conclusions are about these two representatives under this protocol.", True),
         (0, "Caltech-256 overlaps the ImageNet pre-training distribution. That flatters "

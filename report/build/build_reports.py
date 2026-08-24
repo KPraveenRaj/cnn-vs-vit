@@ -558,7 +558,35 @@ def build(final: bool):
                   "Replication speaks to generality, which is a separate claim.")
 
         h1(doc, "9. Limitations")
-        for b in ["One CNN and one ViT are archetypes, not whole families; conclusions "
+        for b in ["PRE-TRAINING RECIPE IS NOT CONTROLLED, only the pre-training data. "
+                  "Both checkpoints are ImageNet-1k, which is the control most "
+                  "comparisons get wrong, but they come from different recipes: "
+                  "ResNet-50 from 'ResNet strikes back' (LAMB, BCE loss, mixup/CutMix, "
+                  "RandAugment, ~600 epochs) and ViT-B/16 from AugReg (strong "
+                  "augmentation plus heavy regularization). Augmentation strength in "
+                  "pre-training is known to affect corruption robustness, so the "
+                  "robustness and frequency results may partly reflect recipe rather "
+                  "than architecture. The defensible claim is about these two released "
+                  "checkpoints fine-tuned identically, not about the families in "
+                  "general. Controlling this would require pre-training both "
+                  "architectures from scratch under one recipe.",
+                  "Related: Bhojanapalli et al. (2021) report that with ImageNet-1k "
+                  "pre-training specifically, ViTs were LESS robust than CNNs on "
+                  "ImageNet-C, converging only with much larger pre-training. This "
+                  "study finds the opposite after transfer. The settings differ — they "
+                  "evaluate in-domain, this evaluates after fine-tuning on a different "
+                  "dataset — but the discrepancy is recorded rather than ignored.",
+                  "The band-limited noise probe holds noise RMS constant across bands. "
+                  "Natural images have approximately 1/f-squared spectra, so constant "
+                  "RMS does not mean constant signal-to-noise ratio per band. Both "
+                  "models face identical noise, so the model-versus-model comparison "
+                  "holds, but reading a curve minimum as a pure measure of which band a "
+                  "model relies on is not licensed.",
+                  "Qualitative saliency is not reported. Attention rollout and Grad-CAM "
+                  "were both implemented and measured degenerate for ViT-B/16 (rollout "
+                  "border-to-centre ratio 1.03, Grad-CAM map standard deviation 0.0000). "
+                  "No conclusion depends on a saliency figure.",
+                  "One CNN and one ViT are archetypes, not whole families; conclusions "
                   "are about these two representatives under this protocol.",
                   "Caltech-256 overlaps the ImageNet pre-training distribution. This "
                   "flatters both models, but symmetrically.",
