@@ -96,19 +96,24 @@ the gradient's mean and variance:
 
     m_t = β₁·m_{{t−1}} + (1−β₁)·g_t
     v_t = β₂·v_{{t−1}} + (1−β₂)·g_t²
-    θ_t = θ_{{t−1}} − η · m̂_t / (√v̂_t + ε)
+    θ_t = θ_{{t−1}} − η·( m̂_t / (√v̂_t + ε)  +  λ·θ_{{t−1}} )
 
-Each parameter effectively gets its own learning rate, scaled down where gradients
-have been large. "Decoupled" weight decay means the shrinkage term is applied
-directly to the weights rather than folded into the gradient, which is the
-correction AdamW makes over Adam. Weight decay = 0.05.
+where m̂ and v̂ are m and v corrected for their bias toward zero in the first few
+steps, and λ is the weight decay. Each parameter effectively gets its own learning
+rate, scaled down where gradients have been large. The λ·θ term is what makes this
+AdamW rather than Adam: the shrinkage is applied *directly to the weights*
+(decoupled) instead of being folded into the gradient, where Adam's per-parameter
+scaling would distort it. Weight decay λ = 0.05.
 
 **Cosine schedule with linear warmup.** The learning rate starts near zero, rises
 linearly over 3 epochs, then follows
 
     η_t = η_max · ½ · (1 + cos(π · t / T))
 
-decaying smoothly to zero at the end of training. Warmup avoids destabilising
+decaying smoothly to zero at the end of training. Here t counts optimiser steps
+*after* warmup and T is the total number of post-warmup steps, which is how
+`src/train/train.py` implements it — the cosine begins where the warmup ends
+rather than at step zero. Warmup avoids destabilising
 pre-trained weights with large early steps; the cosine decay lets the model
 explore early and consolidate late.
 
@@ -126,8 +131,10 @@ The split differs because the ViT needs more memory per image; the *effective*
 batch, and therefore the optimisation, is identical.
 
 **Mixed precision (AMP).** Forward and backward passes run in 16-bit floating
-point where safe, with a 32-bit master copy of the weights. Roughly halves memory
-and speeds up matrix multiplication. A gradient scaler multiplies the loss before
+point where safe, with a 32-bit master copy of the weights. This roughly halves
+*activation* memory — weights, gradients and optimiser state remain 32-bit, so
+total footprint falls by less than half — and speeds up matrix multiplication on
+tensor cores. A gradient scaler multiplies the loss before
 backpropagation to stop small gradients underflowing to zero in fp16.
 
 **Determinism.** `src/utils/seed.py` seeds Python, NumPy, PyTorch and CUDA, sets

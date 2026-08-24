@@ -46,17 +46,22 @@ class Facts:
         self.cost = _read("model_cost.csv")
 
     # ---- availability -----------------------------------------------------
-    def models_done(self, regime="fullft"):
+    def models_done(self, regime="fullft", dataset="caltech256"):
         if self.master.empty:
             return []
         d = self.master[(self.master["regime"] == regime)
+                        & (self.master["dataset"] == dataset)
                         & self.master["test_top1"].notna()]
         return sorted(d["model_name"].unique())
 
-    def n_runs(self, regime=None):
+    def n_runs(self, regime=None, dataset=None):
         if self.master.empty:
             return 0
-        d = self.master if regime is None else self.master[self.master["regime"] == regime]
+        d = self.master
+        if regime is not None:
+            d = d[d["regime"] == regime]
+        if dataset is not None:
+            d = d[d["dataset"] == dataset]
         return len(d)
 
     def battery_done(self, dataset=None):
@@ -138,48 +143,57 @@ class Facts:
         return [(f"{r['lr']:g}", f"{r['best_val_top1']*100:.2f}%", bool(r["selected"]))
                 for _, r in d.iterrows()]
 
-    def corruption_drop(self, model, frac=100):
-        """Relative top-1 lost, averaged over all 15 corruption cells."""
+    def corruption_drop(self, model, frac=100, dataset="caltech256"):
+        """Relative top-1 lost, averaged over all 15 corruption cells.
+
+        MUST filter by dataset. Without it this silently averaged Caltech-256 and
+        Food-101 together the moment Food-101 landed, turning 27.3% into 34.6%.
+        """
         if self.master.empty or "corr_rel_drop" not in self.master.columns:
             return PENDING
         d = self.master[(self.master["model_name"] == model)
+                        & (self.master["dataset"] == dataset)
                         & (self.master["fraction"] == frac)
                         & (self.master["regime"] == "fullft")]
         d = d[d["corr_rel_drop"].notna()]
         return PENDING if d.empty else f"{d['corr_rel_drop'].mean()*100:.1f}%"
 
-    def freq_auc(self, model, tag="lp", frac=100):
+    def freq_auc(self, model, tag="lp", frac=100, dataset="caltech256"):
         col = f"freq_{tag}_auc"
         if self.master.empty or col not in self.master.columns:
             return PENDING
         d = self.master[(self.master["model_name"] == model)
+                        & (self.master["dataset"] == dataset)
                         & (self.master["fraction"] == frac)
                         & (self.master["regime"] == "fullft")]
         d = d[d[col].notna()]
         return PENDING if d.empty else f"{d[col].mean():.3f}"
 
-    def band_weakness(self, model, frac=100):
+    def band_weakness(self, model, frac=100, dataset="caltech256"):
         """Which frequency band hurts this model most."""
         if self.master.empty or "freq_band_argmin" not in self.master.columns:
             return PENDING
         d = self.master[(self.master["model_name"] == model)
+                        & (self.master["dataset"] == dataset)
                         & (self.master["fraction"] == frac)
                         & (self.master["regime"] == "fullft")]
         d = d[d["freq_band_argmin"].notna()]
         return PENDING if d.empty else str(d.iloc[0]["freq_band_argmin"]) + " bins"
 
-    def ece(self, model, frac=100):
+    def ece(self, model, frac=100, dataset="caltech256"):
         if self.calib.empty:
             return PENDING
         d = self.calib[(self.calib["model_name"] == model)
+                       & (self.calib["dataset"] == dataset)
                        & (self.calib["fraction"] == frac)
                        & (self.calib["regime"] == "fullft")]
         return PENDING if d.empty else f"{d['ece'].mean():.4f}"
 
-    def overlap_at(self, frac=100):
+    def overlap_at(self, frac=100, dataset="caltech256"):
         if self.overlap.empty:
             return None
-        d = self.overlap[(self.overlap["fraction"] == frac)
+        d = self.overlap[(self.overlap["dataset"] == dataset)
+                         & (self.overlap["fraction"] == frac)
                          & (self.overlap["regime"] == "fullft")]
         if d.empty:
             return None

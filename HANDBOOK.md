@@ -117,16 +117,20 @@ These are *inductive biases*: assumptions built into the architecture rather tha
 learned from data. They are why CNNs are efficient learners on images — they do
 not have to discover from scratch that images are spatially structured.
 
-Stacking convolutions makes deep networks, but naively deep networks train badly:
-gradients vanish over many layers. **ResNet** (He et al., 2016) solves this with a
-*residual connection*:
+Stacking convolutions makes deep networks, but naively deep networks train badly.
+The specific failure He et al. (2016) identify is *degradation*: adding layers to
+a plain network makes even its TRAINING error worse, which cannot be overfitting.
+They are explicit that this is not simply vanishing gradients — batch
+normalisation already largely addresses those — but an optimisation difficulty in
+approximating identity mappings through many nonlinear layers. **ResNet** solves
+it with a *residual connection*:
 
     y = F(x) + x
 
 The block learns a *correction* F(x) to its input rather than a whole new
-representation. If the best thing to do is nothing, the block can output zero and
-pass x through unchanged — so adding depth cannot make things worse. This is what
-made 50-layer and deeper networks trainable.
+representation. If the best thing to do is nothing, the block can drive F(x)
+toward zero and pass x through — so in principle adding depth need not hurt. This
+is what made 50-layer and deeper networks trainable.
 
 **ResNet-50** used here:
 
@@ -185,8 +189,8 @@ turning a picture into a sequence:
 2. **Class token.** Prepend one learned vector whose final state is used as the
    image representation. Sequence length becomes 197.
 3. **Positional embeddings.** Attention is permutation-invariant — it has no
-   inherent notion of "next to". A learned position vector is added to each patch
-   so the model knows where each patch came from.
+   inherent notion of "next to". A learned position vector is added to every token
+   (all 197, class token included) so the model knows where each patch came from.
 4. **Transformer blocks.** 12 blocks, each = multi-head self-attention +
    feed-forward network, with residual connections and layer normalisation.
 5. **Head.** A linear layer on the class token's final state produces class scores.
@@ -204,9 +208,9 @@ turning a picture into a sequence:
 
 **A control that is easy to get wrong.** The most commonly downloaded ViT-B/16
 weights are `augreg_in21k_ft_in1k` — pre-trained on ImageNet-**21k**, roughly 14
-million images, before fine-tuning on ImageNet-1k. Using those against an
-ImageNet-1k ResNet would give the transformer a fourteen-fold head start in
-pre-training data and silently invalidate the entire comparison. This project
+million images, before fine-tuning on ImageNet-1k. Against an ImageNet-1k ResNet
+(~1.3 million images) that is roughly an eleven-fold advantage in pre-training
+data, and it would silently invalidate the entire comparison. This project
 pins the ImageNet-1k-only tag. It is the single most important control in the
 study.
 
@@ -239,9 +243,12 @@ frozen model, take the feature vector it produces, and train only a single linea
 layer on top. Nothing inside the model changes.
 
 The contrast is informative. Fine-tuning measures *knowledge plus adaptability*;
-probing measures *knowledge alone*. Comparing them separates the two, and in this
-project they give opposite orderings — which is how we know the transformer's
-advantage lies in adapting rather than in what it already knew.
+probing measures *knowledge alone*. In this project the orderings differ: under
+fine-tuning the transformer wins at every fraction, whereas with features frozen
+it wins only at 10% and the CNN wins at 25% and above. Note the ordering is NOT
+reversed everywhere — at 10% the transformer leads in both regimes. The evidence
+therefore points to its advantage lying substantially in adaptability rather than
+in raw pre-trained feature quality, without establishing that on its own.
 
 ---
 
@@ -334,19 +341,24 @@ the gradient's mean and variance:
 
     m_t = β₁·m_{t−1} + (1−β₁)·g_t
     v_t = β₂·v_{t−1} + (1−β₂)·g_t²
-    θ_t = θ_{t−1} − η · m̂_t / (√v̂_t + ε)
+    θ_t = θ_{t−1} − η·( m̂_t / (√v̂_t + ε)  +  λ·θ_{t−1} )
 
-Each parameter effectively gets its own learning rate, scaled down where gradients
-have been large. "Decoupled" weight decay means the shrinkage term is applied
-directly to the weights rather than folded into the gradient, which is the
-correction AdamW makes over Adam. Weight decay = 0.05.
+where m̂ and v̂ are m and v corrected for their bias toward zero in the first few
+steps, and λ is the weight decay. Each parameter effectively gets its own learning
+rate, scaled down where gradients have been large. The λ·θ term is what makes this
+AdamW rather than Adam: the shrinkage is applied *directly to the weights*
+(decoupled) instead of being folded into the gradient, where Adam's per-parameter
+scaling would distort it. Weight decay λ = 0.05.
 
 **Cosine schedule with linear warmup.** The learning rate starts near zero, rises
 linearly over 3 epochs, then follows
 
     η_t = η_max · ½ · (1 + cos(π · t / T))
 
-decaying smoothly to zero at the end of training. Warmup avoids destabilising
+decaying smoothly to zero at the end of training. Here t counts optimiser steps
+*after* warmup and T is the total number of post-warmup steps, which is how
+`src/train/train.py` implements it — the cosine begins where the warmup ends
+rather than at step zero. Warmup avoids destabilising
 pre-trained weights with large early steps; the cosine decay lets the model
 explore early and consolidate late.
 
@@ -364,8 +376,10 @@ The split differs because the ViT needs more memory per image; the *effective*
 batch, and therefore the optimisation, is identical.
 
 **Mixed precision (AMP).** Forward and backward passes run in 16-bit floating
-point where safe, with a 32-bit master copy of the weights. Roughly halves memory
-and speeds up matrix multiplication. A gradient scaler multiplies the loss before
+point where safe, with a 32-bit master copy of the weights. This roughly halves
+*activation* memory — weights, gradients and optimiser state remain 32-bit, so
+total footprint falls by less than half — and speeds up matrix multiplication on
+tensor cores. A gradient scaler multiplies the loss before
 backpropagation to stop small gradients underflowing to zero in fp16.
 
 **Determinism.** `src/utils/seed.py` seeds Python, NumPy, PyTorch and CUDA, sets
@@ -724,8 +738,8 @@ The ordering **inverts**: ViT's frozen features win only at 10%; ResNet's win at
 
 | model | clean top-1 (f100) | mean accuracy lost over 15 corruption cells |
 |---|---|---|
-| ResNet-50 | 88.87% ± 0.04 | 34.6% |
-| ViT-B/16 | 89.62% ± 0.23 | 21.5% |
+| ResNet-50 | 88.87% ± 0.04 | 27.3% |
+| ViT-B/16 | 89.62% ± 0.23 | 16.7% |
 
 On clean images the two are within a point. Under the heaviest sensor noise the difference is nearly 30 points — a benchmark reporting only clean accuracy would describe these models as near-equivalent and be badly misleading.
 
@@ -735,8 +749,8 @@ On clean images the two are within a point. Under the heaviest sensor noise the 
 
 | model | low-pass AUC | high-pass AUC | most damaging noise band |
 |---|---|---|---|
-| ResNet-50 | 0.763 | 0.059 | 8-16 bins |
-| ViT-B/16 | 0.804 | 0.055 | 16-32 bins |
+| ResNet-50 | 0.789 | 0.071 | 8-16 bins |
+| ViT-B/16 | 0.817 | 0.066 | 16-32 bins |
 
 ResNet-50 has a sharp low-frequency vulnerability; ViT-B/16's profile is far flatter with no comparable weak band. Real-world damage disturbs many bands at once, so a model with a sharp weak spot gets caught by it.
 
@@ -796,11 +810,11 @@ ViT-B/16's spectral robustness stays within a 1.03× spread across every dataset
 
 | measure at f100 | value |
 |---|---|
-| Both models wrong | 7.4% |
-| …giving the same wrong label | 44.9% |
-| Cohen's κ on correctness | 0.552 |
-| Oracle top-1 (either model right) | 92.60% |
-| ECE — ResNet-50 / ViT-B/16 | 0.0390 / 0.0447 |
+| Both models wrong | 6.5% |
+| …giving the same wrong label | 44.7% |
+| Cohen's κ on correctness | 0.553 |
+| Oracle top-1 (either model right) | 93.54% |
+| ECE — ResNet-50 / ViT-B/16 | 0.0321 / 0.0338 |
 
 They fail on different images: the oracle sits well above either model alone, so they are complementary rather than interchangeable. And they are similarly calibrated, so the robustness difference is **not** bought by the transformer simply being less confident — an objection worth pre-empting.
 

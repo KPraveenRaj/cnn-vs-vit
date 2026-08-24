@@ -140,7 +140,11 @@ def _extra_tables(runs_dir, tables, master):
     # cost measured on the real workload (peak VRAM, throughput, wall time).
     cost_path = tables / "model_cost.csv"
     if cost_path.exists() and not master.empty:
-        meas = (master[master["regime"] == "fullft"]
+        # Scope to the primary dataset. Throughput and peak VRAM are measured on a
+        # real workload, and workloads differ between datasets, so averaging across
+        # them reports a number that describes neither.
+        meas = (master[(master["regime"] == "fullft")
+                       & (master["dataset"] == "caltech256")]
                 .groupby("model_name")
                 .agg(peak_vram_mb=("peak_vram_mb", "max"),
                      train_imgs_per_sec=("train_imgs_per_sec", "mean"),

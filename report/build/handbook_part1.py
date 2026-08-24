@@ -126,16 +126,20 @@ These are *inductive biases*: assumptions built into the architecture rather tha
 learned from data. They are why CNNs are efficient learners on images — they do
 not have to discover from scratch that images are spatially structured.
 
-Stacking convolutions makes deep networks, but naively deep networks train badly:
-gradients vanish over many layers. **ResNet** (He et al., 2016) solves this with a
-*residual connection*:
+Stacking convolutions makes deep networks, but naively deep networks train badly.
+The specific failure He et al. (2016) identify is *degradation*: adding layers to
+a plain network makes even its TRAINING error worse, which cannot be overfitting.
+They are explicit that this is not simply vanishing gradients — batch
+normalisation already largely addresses those — but an optimisation difficulty in
+approximating identity mappings through many nonlinear layers. **ResNet** solves
+it with a *residual connection*:
 
     y = F(x) + x
 
 The block learns a *correction* F(x) to its input rather than a whole new
-representation. If the best thing to do is nothing, the block can output zero and
-pass x through unchanged — so adding depth cannot make things worse. This is what
-made 50-layer and deeper networks trainable.
+representation. If the best thing to do is nothing, the block can drive F(x)
+toward zero and pass x through — so in principle adding depth need not hurt. This
+is what made 50-layer and deeper networks trainable.
 
 **ResNet-50** used here:
 
@@ -194,8 +198,8 @@ turning a picture into a sequence:
 2. **Class token.** Prepend one learned vector whose final state is used as the
    image representation. Sequence length becomes 197.
 3. **Positional embeddings.** Attention is permutation-invariant — it has no
-   inherent notion of "next to". A learned position vector is added to each patch
-   so the model knows where each patch came from.
+   inherent notion of "next to". A learned position vector is added to every token
+   (all 197, class token included) so the model knows where each patch came from.
 4. **Transformer blocks.** 12 blocks, each = multi-head self-attention +
    feed-forward network, with residual connections and layer normalisation.
 5. **Head.** A linear layer on the class token's final state produces class scores.
@@ -213,9 +217,9 @@ turning a picture into a sequence:
 
 **A control that is easy to get wrong.** The most commonly downloaded ViT-B/16
 weights are `augreg_in21k_ft_in1k` — pre-trained on ImageNet-**21k**, roughly 14
-million images, before fine-tuning on ImageNet-1k. Using those against an
-ImageNet-1k ResNet would give the transformer a fourteen-fold head start in
-pre-training data and silently invalidate the entire comparison. This project
+million images, before fine-tuning on ImageNet-1k. Against an ImageNet-1k ResNet
+(~1.3 million images) that is roughly an eleven-fold advantage in pre-training
+data, and it would silently invalidate the entire comparison. This project
 pins the ImageNet-1k-only tag. It is the single most important control in the
 study.
 
@@ -248,7 +252,10 @@ frozen model, take the feature vector it produces, and train only a single linea
 layer on top. Nothing inside the model changes.
 
 The contrast is informative. Fine-tuning measures *knowledge plus adaptability*;
-probing measures *knowledge alone*. Comparing them separates the two, and in this
-project they give opposite orderings — which is how we know the transformer's
-advantage lies in adapting rather than in what it already knew.
+probing measures *knowledge alone*. In this project the orderings differ: under
+fine-tuning the transformer wins at every fraction, whereas with features frozen
+it wins only at 10% and the CNN wins at 25% and above. Note the ordering is NOT
+reversed everywhere — at 10% the transformer leads in both regimes. The evidence
+therefore points to its advantage lying substantially in adaptability rather than
+in raw pre-trained feature quality, without establishing that on its own.
 """
