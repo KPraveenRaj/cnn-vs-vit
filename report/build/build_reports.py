@@ -387,6 +387,42 @@ def _body(doc, f, final):
                   "this difference is itself data-dependent for one family and not the "
                   "other, which is only visible under a protocol that varies the data "
                   "budget while holding everything else fixed.")
+        cv = f.contribution_verdict()
+        if cv and cv["any_tested"] and not cv["all_replicate"]:
+            h2(doc, "6.4.1 This result did not reproduce on Food-101")
+            para(doc, "Stated plainly, because it bears directly on how far the claim "
+                      "should be taken: the accuracy and robustness findings replicate "
+                      "on Food-101, but this one does not.")
+            rows = [[r["claim"], r["caltech"], r["food101"],
+                     "replicates" if r["agrees"] else "differs"]
+                    for r in cv["rows"]]
+            table(doc, ["Test", "Caltech-256", "Food-101", "Verdict"], rows,
+                  f"Table {tno}: The contribution tested two ways on both datasets.",
+                  widths=[2.2, 1.5, 1.5, 0.8])
+            tno += 1
+            para(doc, "Three qualifications separate what was measured from what can be "
+                      "concluded. First, Food-101 runs a single seed, so a single noisy "
+                      "band can dominate a maximum-over-bands statistic and no "
+                      "significance can be claimed. Second, the Caltech-256 shift is "
+                      "structured — it grows monotonically with frequency — whereas the "
+                      "Food-101 shift is unstructured and bounces in sign, which is what "
+                      "one seed of noise looks like. Third, in the high-frequency band "
+                      "specifically, where the claim is located, both Food-101 values sit "
+                      "near zero: the honest description is that neither model's profile "
+                      "moved, rather than that the effect reversed.")
+            para(doc, "A further asymmetry is worth recording. The fractions are matched "
+                      "in proportion but not in absolute size. Food-101's 25% subset is "
+                      "17,675 images against Caltech-256's 5,310, and its 10% subset is "
+                      "7,070 against 2,196. The same nominal fraction is therefore a "
+                      "substantially larger training set on Food-101, which may place it "
+                      "beyond the data-starved regime in which the effect appears.")
+            para(doc, "The claim is therefore narrowed rather than withdrawn: on "
+                      "Caltech-256, spectral robustness is data-dependent for the "
+                      "convolutional network and not for the transformer; this was not "
+                      "reproduced on Food-101 over the range tested. Whether the effect "
+                      "is dataset-specific or requires a smaller absolute training set "
+                      "than Food-101 provides is left open, and is a natural target for "
+                      "Phase II.")
     figure(doc, f.figure("fig_frequency_interaction.png"),
            f"Figure {fno}: The same interaction seen from the filtering side -- ideal "
            f"low-pass accuracy-vs-cutoff, one panel per training fraction.")

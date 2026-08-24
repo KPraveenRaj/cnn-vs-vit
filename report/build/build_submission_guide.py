@@ -169,6 +169,37 @@ def main():
         A("Figure: `results/figures/fig_frequency_shift.pdf`. Deck slide: "
           "\"Frequency reliance × data fraction\" in both review decks. Report: §6.4.")
         A("")
+        cv = f.contribution_verdict()
+        if cv and cv["any_tested"] and not cv["all_replicate"]:
+            A("> **⚠ IMPORTANT — this one did not reproduce on Food-101.**")
+            A(">")
+            A("> | test | Caltech-256 | Food-101 |")
+            A("> |---|---|---|")
+            for r in cv["rows"]:
+                A(f"> | {r['claim']} | {r['caltech']} | {r['food101']} |")
+            A(">")
+            A("> **Do not present this as a general result.** The defensible phrasing "
+              "is: *on Caltech-256, the CNN's spectral robustness is data-dependent and "
+              "the transformer's is not; this did not reproduce on Food-101 over the "
+              "range tested.*")
+            A(">")
+            A("> Three points to have ready, because they are real and an examiner may "
+              "not think of them:")
+            A("> 1. Food-101 runs **one seed**, so a single noisy band can dominate the "
+              "statistic and nothing can be said about significance.")
+            A("> 2. Caltech's shift is **structured** — it grows monotonically with "
+              "frequency. Food-101's bounces in sign, which is what one seed of noise "
+              "looks like.")
+            A("> 3. In the high band specifically, both Food-101 values are ~0. The "
+              "honest description is *neither model moved*, not *the effect reversed*.")
+            A(">")
+            A("> Also: the fractions match in proportion but not absolute size. "
+              "Food-101's 10% is 7,070 images against Caltech's 2,196 — it may simply "
+              "sit past the data-starved regime the effect lives in.")
+            A(">")
+            A("> **Volunteering this is much stronger than being caught by it**, and it "
+              "sets up Phase II with a concrete open question.")
+            A("")
 
     # -------------------------------------------------------- protocol story
     if sf:

@@ -234,6 +234,33 @@ class Facts:
                               "n_lo": len(a_lo), "n_hi": len(a_hi)}
         return out or None
 
+    def contribution_verdict(self):
+        """Did the contribution replicate on Food-101? Returns dict or None.
+
+        The documents must state this honestly whichever way it goes, so the
+        verdict is read from results/tables/replication.csv rather than being
+        asserted in prose that could go stale after a rerun.
+        """
+        p = TABLES / "replication.csv"
+        if not p.exists():
+            return None
+        df = pd.read_csv(p)
+        rows = df[df["claim"].str.contains("profile shifts MORE|HIGH-frequency",
+                                           case=False, na=False)]
+        if rows.empty:
+            return None
+        out = []
+        for _, r in rows.iterrows():
+            a = r["agrees"]
+            out.append({"claim": str(r["claim"]),
+                        "caltech": str(r["caltech256"]),
+                        "food101": str(r["food101"]),
+                        "agrees": None if pd.isna(a) else bool(a)})
+        tested = [o for o in out if o["agrees"] is not None]
+        return {"rows": out,
+                "all_replicate": bool(tested) and all(o["agrees"] for o in tested),
+                "any_tested": bool(tested)}
+
     def schedule_finding(self):
         """The schedule/early-stopping result, read from the runs that produced it.
 

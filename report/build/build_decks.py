@@ -622,10 +622,18 @@ def sl_contribution(prs, f):
                 f"in the finest-detail band). ViT-B/16's lie almost on top of each other "
                 f"({v['max_abs']:.3f}). A {ratio:.0f}x difference.", False),
         ], top=I(5.25), size=14, height=I(1.05))
-        plain(s, "The CNN only becomes robust to fine-detail interference once it has "
-                 "seen plenty of data. The transformer is already robust, and stays "
-                 "that way — which is exactly why it wins by most when data is scarce.",
-              top=I(6.35), height=I(0.95))
+        cv = f.contribution_verdict()
+        if cv and cv["any_tested"] and not cv["all_replicate"]:
+            plain(s, "On Caltech-256 the CNN only becomes robust to fine detail once it "
+                     "has seen plenty of data; the transformer is already robust. This "
+                     "did NOT reproduce on Food-101 — see the confirmation slide. The "
+                     "claim is therefore stated as dataset-specific.",
+                  top=I(6.3), height=I(1.0))
+        else:
+            plain(s, "The CNN only becomes robust to fine-detail interference once it "
+                     "has seen plenty of data. The transformer is already robust, and "
+                     "stays that way — which is exactly why it wins by most when data "
+                     "is scarce.", top=I(6.35), height=I(0.95))
     notes(s, """
 This is the original contribution — the part that is not a replication of known
 results. Take it slowly.

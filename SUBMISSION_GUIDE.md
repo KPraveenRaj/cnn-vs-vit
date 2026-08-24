@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-24 16:00 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-24 17:26 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -68,6 +68,24 @@ Change in relative retention per frequency band between 10% and 100% training da
 
 Figure: `results/figures/fig_frequency_shift.pdf`. Deck slide: "Frequency reliance × data fraction" in both review decks. Report: §6.4.
 
+> **⚠ IMPORTANT — this one did not reproduce on Food-101.**
+>
+> | test | Caltech-256 | Food-101 |
+> |---|---|---|
+> | ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.102 vs 0.136 (f25->f100) |
+> | ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.017 vs +0.009 |
+>
+> **Do not present this as a general result.** The defensible phrasing is: *on Caltech-256, the CNN's spectral robustness is data-dependent and the transformer's is not; this did not reproduce on Food-101 over the range tested.*
+>
+> Three points to have ready, because they are real and an examiner may not think of them:
+> 1. Food-101 runs **one seed**, so a single noisy band can dominate the statistic and nothing can be said about significance.
+> 2. Caltech's shift is **structured** — it grows monotonically with frequency. Food-101's bounces in sign, which is what one seed of noise looks like.
+> 3. In the high band specifically, both Food-101 values are ~0. The honest description is *neither model moved*, not *the effect reversed*.
+>
+> Also: the fractions match in proportion but not absolute size. Food-101's 10% is 7,070 images against Caltech's 2,196 — it may simply sit past the data-starved regime the effect lives in.
+>
+> **Volunteering this is much stronger than being caught by it**, and it sets up Phase II with a concrete open question.
+
 ## 3. The methodology finding (your best viva material)
 
 Mid-project, the declared schedule turned out to be self-defeating: a 30-epoch cosine with patience-5 early stopping terminated runs while the learning rate was still high, before the annealing phase that converges the model.
@@ -88,9 +106,10 @@ Present this deliberately. It demonstrates that you understand the difference be
 | ViT-B/16 beats ResNet-50 at 25% data | +1.99 pp | +4.87 pp | **replicates** |
 | ViT-B/16 beats ResNet-50 at 100% data | +0.76 pp | +2.10 pp | **replicates** |
 | Gap narrows from 25% to 100% data | -1.24 pp change | -2.76 pp change | **replicates** |
-| ViT-B/16 degrades less under corruption | 27.3% vs 16.7% drop | pending | pending |
-| ViT-B/16 retains more accuracy under low-pass filtering | 0.817 vs 0.789 | pending | pending |
-| ResNet's spectral profile shifts MORE than ViT's (25%->100%) | 0.090 vs 0.041 | pending | pending |
+| ViT-B/16 degrades less under corruption | 27.3% vs 16.7% drop | 56.5% vs 35.9% drop | **replicates** |
+| ViT-B/16 retains more accuracy under low-pass filtering | 0.817 vs 0.789 | 0.765 vs 0.686 | **replicates** |
+| ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.102 vs 0.136 (f25->f100) | **differs** |
+| ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.017 vs +0.009 | **differs** |
 
 **How to talk about this.** Food-101 runs one seed by design, so it supports claims about *direction*, never significance. And if something differs, that is not evidence the Caltech work is wrong — the Caltech result stands on its own internal validity (frozen split, three seeds, one protocol). Disagreement would mean the finding is dataset-dependent, which is a legitimate and arguably more interesting result: it would say the CNN-versus-ViT ordering depends on how close the target task sits to the pre-training distribution.
 
