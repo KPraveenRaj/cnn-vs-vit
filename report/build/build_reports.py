@@ -416,6 +416,46 @@ def _body(doc, f, final):
                       "7,070 against 2,196. The same nominal fraction is therefore a "
                       "substantially larger training set on Food-101, which may place it "
                       "beyond the data-starved regime in which the effect appears.")
+            inv = f.invariance()
+            if inv:
+                h2(doc, "6.4.2 What does survive both datasets")
+                rows = []
+                for m, n in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16")):
+                    dd = inv[m]
+                    cells = []
+                    for ds in ("caltech256", "food101"):
+                        got = [f"f{fr}: {v:.3f}" for (d2, fr), v in sorted(dd["values"].items())
+                               if d2 == ds]
+                        cells.append("; ".join(got) if got else "-")
+                    rows.append([n, cells[0], cells[1],
+                                 f"{dd['min']:.3f}-{dd['max']:.3f}", f"{dd['range']:.1f}x"])
+                table(doc, ["Model", "Caltech-256", "Food-101", "Range", "Spread"], rows,
+                      f"Table {tno}: Accuracy retained under high-frequency band noise, "
+                      f"relative to each run's own clean accuracy, in every dataset and "
+                      f"data-fraction condition measured.", widths=[1.0, 1.7, 1.7, 1.0, 0.6])
+                tno += 1
+                para(doc, f"Across every condition tested, ViT-B/16's high-frequency "
+                          f"robustness stays within {inv['vit_b16']['min']:.3f} to "
+                          f"{inv['vit_b16']['max']:.3f} — a spread of "
+                          f"{inv['vit_b16']['range']:.2f} times. ResNet-50's ranges from "
+                          f"{inv['resnet50']['min']:.3f} to {inv['resnet50']['max']:.3f}, "
+                          f"a spread of {inv['resnet50']['range']:.1f} times. The "
+                          f"transformer's spectral robustness is effectively invariant to "
+                          f"both the task and the data budget; the convolutional "
+                          f"network's is contingent on both.")
+                para(doc, "On Food-101 in particular, ResNet-50 retains under a tenth of "
+                          "its accuracy against high-frequency noise at every data "
+                          "fraction measured, and does not improve with more data. On "
+                          "Caltech-256 it improves substantially. So the direction of "
+                          "the effect is dataset-specific, while the contrast in "
+                          "stability between the two families is not.")
+                para(doc, "This broader framing was arrived at after examining both "
+                          "datasets rather than predicted in advance, and is reported as "
+                          "such. It is a hypothesis with support across every condition "
+                          "measured here, not a pre-registered result; confirming it "
+                          "would require a third dataset, which is a concrete objective "
+                          "for Phase II.")
+
             para(doc, "The claim is therefore narrowed rather than withdrawn: on "
                       "Caltech-256, spectral robustness is data-dependent for the "
                       "convolutional network and not for the transformer; this was not "

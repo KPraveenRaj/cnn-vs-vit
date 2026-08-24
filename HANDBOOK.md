@@ -724,8 +724,8 @@ The ordering **inverts**: ViT's frozen features win only at 10%; ResNet's win at
 
 | model | clean top-1 (f100) | mean accuracy lost over 15 corruption cells |
 |---|---|---|
-| ResNet-50 | 88.87% ± 0.04 | 27.3% |
-| ViT-B/16 | 89.62% ± 0.23 | 16.7% |
+| ResNet-50 | 88.87% ± 0.04 | 34.6% |
+| ViT-B/16 | 89.62% ± 0.23 | 21.5% |
 
 On clean images the two are within a point. Under the heaviest sensor noise the difference is nearly 30 points — a benchmark reporting only clean accuracy would describe these models as near-equivalent and be badly misleading.
 
@@ -735,8 +735,8 @@ On clean images the two are within a point. Under the heaviest sensor noise the 
 
 | model | low-pass AUC | high-pass AUC | most damaging noise band |
 |---|---|---|---|
-| ResNet-50 | 0.789 | 0.071 | 8-16 bins |
-| ViT-B/16 | 0.817 | 0.066 | 16-32 bins |
+| ResNet-50 | 0.763 | 0.059 | 8-16 bins |
+| ViT-B/16 | 0.804 | 0.055 | 16-32 bins |
 
 ResNet-50 has a sharp low-frequency vulnerability; ViT-B/16's profile is far flatter with no comparable weak band. Real-world damage disturbs many bands at once, so a model with a sharp weak spot gets caught by it.
 
@@ -765,11 +765,11 @@ ResNet-50's profile moves by 0.263 (concentrated at high frequency, band 88-159)
 
 | measure at f100 | value |
 |---|---|
-| Both models wrong | 6.5% |
-| …giving the same wrong label | 44.7% |
-| Cohen's κ on correctness | 0.553 |
-| Oracle top-1 (either model right) | 93.54% |
-| ECE — ResNet-50 / ViT-B/16 | 0.0321 / 0.0338 |
+| Both models wrong | 7.4% |
+| …giving the same wrong label | 44.9% |
+| Cohen's κ on correctness | 0.552 |
+| Oracle top-1 (either model right) | 92.60% |
+| ECE — ResNet-50 / ViT-B/16 | 0.0390 / 0.0447 |
 
 They fail on different images: the oracle sits well above either model alone, so they are complementary rather than interchangeable. And they are similarly calibrated, so the robustness difference is **not** bought by the transformer simply being less confident — an objection worth pre-empting.
 
@@ -781,18 +781,20 @@ They fail on different images: the oracle sits well above either model alone, so
 | GMACs @224 | 4.09 | 16.85 | 4.1× |
 | Peak train VRAM (MB) | 3101 | 3621 | |
 
-Total compute for the whole study: **8.3 GPU-hours** on one RTX 4060 Laptop GPU (8 GB).
+Total compute for the whole study: **15.2 GPU-hours** on one RTX 4060 Laptop GPU (8 GB).
 
 ### 9.8 Does Food-101 replicate it?
 
 | finding | Caltech-256 | Food-101 | verdict |
 |---|---|---|---|
-| ViT-B/16 beats ResNet-50 at 25% data | +1.99 pp | pending | pending |
-| ViT-B/16 beats ResNet-50 at 100% data | +0.76 pp | pending | pending |
-| Gap narrows from 25% to 100% data | -1.24 pp change | pending | pending |
-| ViT-B/16 degrades less under corruption | 27.3% vs 16.7% drop | pending | pending |
-| ViT-B/16 retains more accuracy under low-pass filtering | 0.817 vs 0.789 | pending | pending |
-| ResNet's spectral profile shifts MORE than ViT's (25%->100%) | 0.090 vs 0.041 | pending | pending |
+| ViT-B/16 beats ResNet-50 at 25% data | +1.99 pp | +4.87 pp | **replicates** |
+| ViT-B/16 beats ResNet-50 at 100% data | +0.76 pp | +2.10 pp | **replicates** |
+| Gap narrows from 25% to 100% data | -1.24 pp change | -2.76 pp change | **replicates** |
+| ViT-B/16 degrades less under corruption | 27.3% vs 16.7% drop | 56.5% vs 35.9% drop | **replicates** |
+| ViT-B/16 retains more accuracy under low-pass filtering | 0.817 vs 0.789 | 0.765 vs 0.686 | **replicates** |
+| ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.061 vs 0.110 (f10->f100) | **differs** |
+| ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.011 vs +0.019 | **differs** |
+| ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x range) | ViT 0.961-0.987 (1.03x range) | **replicates** |
 
 Two cautions. Food-101 runs **one seed** by design, so it supports statements about direction, not significance. And a finding that holds on one dataset and not the other indicates *dataset dependence*, not an error in the first measurement — the Caltech result rests on its own internal validity (frozen split, three seeds, one protocol).
 

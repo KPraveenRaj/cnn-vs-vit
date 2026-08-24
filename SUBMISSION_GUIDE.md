@@ -1,6 +1,6 @@
 # What to submit, and what it says
 
-*Generated 2026-08-24 17:26 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
+*Generated 2026-08-24 18:10 from `results/tables/`. Re-run `python report/build/build_submission_guide.py` after new results land.*
 
 Read this first. It maps every artifact to when you would use it, states the results in language you can defend, and marks the few things you should NOT claim.
 
@@ -34,7 +34,7 @@ Note the **inversion**: ViT's frozen features win at 10% data, but ResNet's win 
 
 ## 2. The mechanism — why ViT is more robust
 
-The evaluation battery has run on **28 of 24** checkpoints, 42 inference passes each.
+The evaluation battery has run on **30 of 24** checkpoints, 42 inference passes each.
 
 Under equal-energy noise confined to one frequency band (f100):
 
@@ -72,8 +72,9 @@ Figure: `results/figures/fig_frequency_shift.pdf`. Deck slide: "Frequency relian
 >
 > | test | Caltech-256 | Food-101 |
 > |---|---|---|
-> | ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.102 vs 0.136 (f25->f100) |
-> | ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.017 vs +0.009 |
+> | ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.061 vs 0.110 (f10->f100) |
+> | ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.011 vs +0.019 |
+> | ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x range) | ViT 0.961-0.987 (1.03x range) |
 >
 > **Do not present this as a general result.** The defensible phrasing is: *on Caltech-256, the CNN's spectral robustness is data-dependent and the transformer's is not; this did not reproduce on Food-101 over the range tested.*
 >
@@ -85,6 +86,23 @@ Figure: `results/figures/fig_frequency_shift.pdf`. Deck slide: "Frequency relian
 > Also: the fractions match in proportion but not absolute size. Food-101's 10% is 7,070 images against Caltech's 2,196 — it may simply sit past the data-starved regime the effect lives in.
 >
 > **Volunteering this is much stronger than being caught by it**, and it sets up Phase II with a concrete open question.
+
+### What DOES survive both datasets — use this framing instead
+
+Accuracy retained under high-frequency noise, every condition tested:
+
+| model | range across all conditions | spread |
+|---|---|---|
+| **ResNet-50** | 0.078 – 0.878 | **11.2×** |
+| **ViT-B/16** | 0.961 – 0.987 | **1.0×** |
+
+**ViT-B/16's spectral robustness is invariant (1.03× spread). ResNet-50's is contingent on both task and data budget (11.2× spread).** That holds across every dataset and data size measured.
+
+On Food-101 the CNN retains under a tenth of its accuracy against high-frequency noise at *every* data size and never improves. On Caltech it improves a lot. So the *direction* is dataset-specific; the *stability contrast* is not.
+
+**Say it like this:** *"The transformer's robustness to fine detail is the same whatever we train it on and however much data we give it. The CNN's depends on both — and on one dataset it never gets there at all."*
+
+**And be upfront that this framing came after seeing both datasets**, not before. It is a well-supported hypothesis, not a pre-registered result. Saying so costs nothing and is exactly the judgement an examiner is looking for.
 
 ## 3. The methodology finding (your best viva material)
 
@@ -108,8 +126,9 @@ Present this deliberately. It demonstrates that you understand the difference be
 | Gap narrows from 25% to 100% data | -1.24 pp change | -2.76 pp change | **replicates** |
 | ViT-B/16 degrades less under corruption | 27.3% vs 16.7% drop | 56.5% vs 35.9% drop | **replicates** |
 | ViT-B/16 retains more accuracy under low-pass filtering | 0.817 vs 0.789 | 0.765 vs 0.686 | **replicates** |
-| ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.102 vs 0.136 (f25->f100) | **differs** |
-| ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.017 vs +0.009 | **differs** |
+| ResNet's profile shifts MORE than ViT's (max over bands) | 0.263 vs 0.022 (f10->f100) | 0.061 vs 0.110 (f10->f100) | **differs** |
+| ResNet's HIGH-frequency robustness improves more with data than ViT's | +0.263 vs +0.010 | -0.011 vs +0.019 | **differs** |
+| ViT's high-frequency robustness is INVARIANT across dataset and data budget; ResNet's is contingent | ResNet 0.078-0.878 (11.2x range) | ViT 0.961-0.987 (1.03x range) | **replicates** |
 
 **How to talk about this.** Food-101 runs one seed by design, so it supports claims about *direction*, never significance. And if something differs, that is not evidence the Caltech work is wrong — the Caltech result stands on its own internal validity (frozen split, three seeds, one protocol). Disagreement would mean the finding is dataset-dependent, which is a legitimate and arguably more interesting result: it would say the CNN-versus-ViT ordering depends on how close the target task sits to the pre-training distribution.
 
@@ -171,7 +190,7 @@ Generated once, committed to git, and never used for any decision — every lear
 
 ## 6. What is not finished
 
-- **Evaluation battery: 28 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
+- **Evaluation battery: 30 of 24 checkpoints.** Figures involving corruption and frequency will sharpen as the rest land.
 - **Food-101 confirmation: done.** Data and splits are staged. It is the declared first thing to cut, so its absence is a documented scope decision, not a gap.
 - **Attention maps / Grad-CAM:** listed in the plan as qualitative extras only if time permits. Not started, and not required by any committed figure.
 

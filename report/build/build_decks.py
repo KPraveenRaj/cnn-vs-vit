@@ -675,6 +675,72 @@ everything else fixed, which is what this protocol does.
     return s
 
 
+def sl_invariance(prs, f):
+    """The claim that survives BOTH datasets."""
+    inv = f.invariance()
+    s = slide(prs, "What survives both datasets", kicker="13b · Contribution, scoped")
+    if not inv:
+        bullets(s, [(0, "(pending)", False)])
+        return s
+    rows = []
+    for m, n in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16")):
+        d = inv[m]
+        cells = []
+        for ds, lab in (("caltech256", "Caltech"), ("food101", "Food-101")):
+            got = [f"f{fr}:{v:.2f}" for (dd, fr), v in sorted(d["values"].items())
+                   if dd == ds]
+            cells.append(" ".join(got) if got else "—")
+        rows.append([n, cells[0], cells[1], f"{d['min']:.3f}–{d['max']:.3f}",
+                     f"{d['range']:.1f}×"])
+    table(s, ["Model", "Caltech-256", "Food-101", "range", "spread"], rows,
+          top=I(1.62), col_w=[1.0, 1.6, 1.6, 1.0, 0.7], size=11)
+    bullets(s, [
+        (0, "Accuracy retained under high-frequency noise, in every dataset × data-size "
+            "condition tested.", False),
+        (0, f"ResNet-50 varies over a {inv['resnet50']['range']:.0f}× range — it depends "
+            f"on both the task and how much data it saw. ViT-B/16 varies over "
+            f"{inv['vit_b16']['range']:.2f}× — effectively invariant.", True),
+        (0, "The narrower claim (that the CNN's robustness IMPROVES with data) held on "
+            "Caltech-256 but not on Food-101, where the CNN stays fragile at every "
+            "budget. What generalises is the INVARIANCE contrast, not the direction.", False),
+    ], top=I(3.3), size=14, height=I(2.1))
+    plain(s, "The transformer's robustness to fine detail is the same whatever you train "
+             "it on and however much data you give it. The CNN's depends on both — and "
+             "on one dataset it never gets there at all.", top=I(5.6), height=I(1.0))
+    takeaway(s, "Stated honestly: this broader framing was formed after seeing both "
+                "datasets. A third dataset would be needed to confirm it.", top=I(6.75))
+    notes(s, """
+This slide exists because the narrower version of the contribution did not survive
+the second dataset, and that has to be handled openly.
+
+The table is high-frequency robustness in every condition tested — two datasets,
+several data sizes each. The transformer sits between 0.96 and 0.99 everywhere: it
+barely notices fine-detail noise regardless of task or data budget. The CNN ranges
+from 0.08 to 0.88 — a factor of about eleven.
+
+Read the Food-101 column for the CNN carefully. It is around 0.08 at every data
+size. On that dataset the convolutional network never becomes robust to
+high-frequency noise, no matter how much data it gets. On Caltech it does, given
+enough. So the original claim — that the CNN LEARNS this robustness from data —
+is true on one dataset and false on the other.
+
+What does hold across everything is the contrast in stability: the transformer is
+invariant, the CNN is contingent on both task and data.
+
+Be explicit that this broader framing was arrived at after looking at both
+datasets rather than predicted in advance. That is an honest description of how
+the analysis went, and it makes the claim a hypothesis with strong support rather
+than a confirmed result. Confirming it needs a third dataset, which is a concrete
+Phase-II target.
+
+If asked why the CNN might be permanently fragile on Food-101: distinguishing food
+categories leans heavily on fine texture, so high-frequency content is essential to
+the task and the CNN cannot afford to discard it — yet it also cannot make it
+robust. That is a hypothesis, not a measurement, and should be labelled as one.
+""")
+    return s
+
+
 def sl_overlap(prs, f):
     s = slide(prs, "Do they make the same mistakes?", kicker="14 · Supporting")
     o = f.overlap_at(100)
@@ -883,6 +949,7 @@ def _core_story(prs, f, final=False):
     sl_what_is_frequency(prs, f)
     sl_result_frequency(prs, f)
     sl_contribution(prs, f)
+    sl_invariance(prs, f)
     sl_overlap(prs, f)
     sl_calibration(prs, f)
     sl_deployment(prs, f)
@@ -1093,6 +1160,7 @@ def deck_progress_04(f):
                 "mid-semester review",
                 [COURSE + " · " + TITLE, STUDENT, GUIDE])
     sl_contribution(prs, f)
+    sl_invariance(prs, f)
     sl_overlap(prs, f)
     sl_calibration(prs, f)
 

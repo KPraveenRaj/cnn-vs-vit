@@ -200,6 +200,39 @@ def main():
             A("> **Volunteering this is much stronger than being caught by it**, and it "
               "sets up Phase II with a concrete open question.")
             A("")
+            inv = f.invariance()
+            if inv:
+                A("### What DOES survive both datasets — use this framing instead")
+                A("")
+                A("Accuracy retained under high-frequency noise, every condition tested:")
+                A("")
+                A("| model | range across all conditions | spread |")
+                A("|---|---|---|")
+                for m, n in (("resnet50", "ResNet-50"), ("vit_b16", "ViT-B/16")):
+                    dd = inv[m]
+                    A(f"| **{n}** | {dd['min']:.3f} – {dd['max']:.3f} | "
+                      f"**{dd['range']:.1f}×** |")
+                A("")
+                A(f"**ViT-B/16's spectral robustness is invariant "
+                  f"({inv['vit_b16']['range']:.2f}× spread). ResNet-50's is contingent on "
+                  f"both task and data budget ({inv['resnet50']['range']:.1f}× spread).** "
+                  f"That holds across every dataset and data size measured.")
+                A("")
+                A("On Food-101 the CNN retains under a tenth of its accuracy against "
+                  "high-frequency noise at *every* data size and never improves. On "
+                  "Caltech it improves a lot. So the *direction* is dataset-specific; the "
+                  "*stability contrast* is not.")
+                A("")
+                A("**Say it like this:** *\"The transformer's robustness to fine detail "
+                  "is the same whatever we train it on and however much data we give it. "
+                  "The CNN's depends on both — and on one dataset it never gets there at "
+                  "all.\"*")
+                A("")
+                A("**And be upfront that this framing came after seeing both datasets**, "
+                  "not before. It is a well-supported hypothesis, not a pre-registered "
+                  "result. Saying so costs nothing and is exactly the judgement an "
+                  "examiner is looking for.")
+                A("")
 
     # -------------------------------------------------------- protocol story
     if sf:

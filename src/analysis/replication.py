@@ -194,6 +194,37 @@ def main():
         f"{hb['food101'][0]:+.3f} vs {hb['food101'][1]:+.3f}" if f2 == f2 else "pending",
         _same_sign(c2, f2), "CONTRIBUTION (as stated)")
 
+    # 8. The BROADER claim, tested across every (dataset, fraction) condition.
+    #
+    # Stated honestly about its own provenance: this generalisation was formed
+    # AFTER seeing both datasets, so it is a hypothesis supported by the data
+    # rather than one the study set out to test. It is reported because it is
+    # what the four conditions actually show, and it is the correct scope for
+    # the narrower claim above, which held only on Caltech-256. Confirming it
+    # would require a third dataset — a Phase-II target.
+    hi_band = {}
+    for model in ("resnet50", "vit_b16"):
+        vals = []
+        for ds in ("caltech256", "food101"):
+            for fr in (10, 25, 100):
+                prof, _ = _band_profile(ds, model, fr)
+                if prof is not None:
+                    vals.append(float(prof[-1]))
+        hi_band[model] = vals
+    if all(len(v) >= 4 for v in hi_band.values()):
+        spread = {m: (min(v), max(v), max(v) / max(min(v), 1e-9))
+                  for m, v in hi_band.items()}
+        r, v = spread["resnet50"], spread["vit_b16"]
+        claims.append({
+            "claim": "ViT's high-frequency robustness is INVARIANT across dataset and "
+                     "data budget; ResNet's is contingent",
+            "caltech256": f"ResNet {r[0]:.3f}-{r[1]:.3f} ({r[2]:.1f}x range)",
+            "food101": f"ViT {v[0]:.3f}-{v[1]:.3f} ({v[2]:.2f}x range)",
+            "agrees": bool(r[2] > v[2] * 2),
+            "note": "BROADER CLAIM — formed after seeing both datasets, "
+                    "spans all conditions",
+        })
+
     df = pd.DataFrame(claims)
     df.to_csv(tables / "replication.csv", index=False)
 

@@ -261,6 +261,42 @@ class Facts:
                 "all_replicate": bool(tested) and all(o["agrees"] for o in tested),
                 "any_tested": bool(tested)}
 
+    def invariance(self):
+        """High-frequency retention across every (dataset, fraction) condition.
+
+        The broader claim that survives both datasets: the transformer's spectral
+        robustness is invariant, the CNN's is contingent on task and data budget.
+        """
+        import json
+        import numpy as np
+        out = {}
+        for model in ("resnet50", "vit_b16"):
+            vals = {}
+            for ds in ("caltech256", "food101"):
+                for fr in (10, 25, 50, 100):
+                    rows = []
+                    for seed in (0, 1, 2):
+                        p = (REPO_ROOT / "results" / "runs" /
+                             f"{model}_{ds}_f{fr}_s{seed}_fullft" / "eval_results.json")
+                        if not p.exists():
+                            continue
+                        r = json.loads(p.read_text())
+                        b = r.get("frequency", {}).get("band_noise", {})
+                        if not b or "clean" not in r:
+                            continue
+                        ks = sorted(b, key=lambda x: int(x.split("-")[0]))
+                        rows.append(b[ks[-1]]["top1"] / r["clean"]["top1"])
+                    if rows:
+                        vals[(ds, fr)] = float(np.mean(rows))
+            if vals:
+                lo, hi = min(vals.values()), max(vals.values())
+                out[model] = {"values": vals, "min": lo, "max": hi,
+                              "range": hi / max(lo, 1e-9)}
+        if len(out) < 2:
+            return None
+        out["ratio"] = out["resnet50"]["range"] / max(out["vit_b16"]["range"], 1e-9)
+        return out
+
     def schedule_finding(self):
         """The schedule/early-stopping result, read from the runs that produced it.
 
